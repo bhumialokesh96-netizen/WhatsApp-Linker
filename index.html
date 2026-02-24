@@ -3,72 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Link WhatsApp Device</title>
+    <title>Secure Device Pairing</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e5ddd5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 350px; width: 100%; }
-        h2 { color: #075E54; margin-bottom: 5px; }
-        p { color: #555; font-size: 14px; margin-bottom: 25px; }
-        input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; margin-bottom: 15px; outline: none; }
-        input:focus { border-color: #25D366; }
-        button { background-color: #25D366; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.3s; }
-        button:hover { background-color: #128C7E; }
-        .code-display { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #075E54; margin-top: 25px; display: block; }
-        .instructions { font-size: 13px; color: #888; margin-top: 15px; display: none; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #f0f2f5; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            color: #1c1e21;
+        }
+        .card { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            max-width: 360px; 
+            width: 100%; 
+            box-sizing: border-box;
+        }
+        .header { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 5px; line-height: 1.4; }
+        .subheader { font-size: 14px; color: #555; margin-bottom: 20px; }
+        
+        .input-group { 
+            display: flex; 
+            align-items: center; 
+            background: #f7f7f9; 
+            border-radius: 12px; 
+            padding: 12px 15px; 
+            margin-bottom: 8px;
+            border: 1px solid #e1e1e1;
+        }
+        .flag { font-size: 20px; margin-right: 5px; }
+        .country-code { font-size: 16px; font-weight: 500; color: #000; margin-right: 10px; }
+        .divider { width: 1px; height: 20px; background: #ccc; margin-right: 10px; }
+        .input-group input { 
+            border: none; 
+            background: transparent; 
+            font-size: 16px; 
+            outline: none; 
+            flex: 1; 
+            width: 100%;
+        }
+        .clear-btn { 
+            background: #e0e0e0; color: #555; border-radius: 50%; width: 20px; height: 20px; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 12px; cursor: pointer; font-weight: bold;
+        }
+
+        .hint { font-size: 12px; color: #888; margin-bottom: 20px; margin-left: 5px; }
+        
+        .steps-container { 
+            font-size: 13.5px; color: #444; line-height: 1.6; margin-bottom: 25px; 
+            background: #f8f9fa; padding: 15px; border-radius: 10px;
+        }
+        .steps-container strong { color: #000; }
+        
+        .code-container { 
+            display: flex; justify-content: center; align-items: center; gap: 6px; margin-bottom: 25px; 
+        }
+        .code-box { 
+            width: 35px; height: 40px; background: #e4e6eb; border-radius: 8px; 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 20px; font-weight: bold; color: #1c1e21; text-transform: uppercase;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .code-dash { font-size: 24px; font-weight: bold; color: #555; margin: 0 4px; }
+
+        .footer-text { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 25px; }
+        .highlight { color: #1a1a1a; font-weight: 600; display: block; margin-bottom: 8px; }
+        
+        .action-btn { 
+            background-color: #25D366; color: white; border: none; padding: 15px; 
+            font-size: 16px; font-weight: 600; border-radius: 30px; cursor: pointer; 
+            width: 100%; transition: all 0.2s; box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2);
+        }
+        .action-btn:active { transform: scale(0.98); }
+        .action-btn:disabled { background-color: #92e8b3; cursor: not-allowed; box-shadow: none; }
+        
+        .status-msg { text-align: center; margin-top: 15px; font-size: 14px; font-weight: 500; color: #dc3545; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Link Device</h2>
-        <p>Enter number with country code (e.g., 919876543210)</p>
-        
-        <input type="number" id="phone" placeholder="91XXXXXXXXXX" />
-        <button id="btn" onclick="getPairingCode()">Generate Code</button>
 
-        <div id="result" class="code-display"></div>
-        <div id="instructions" class="instructions">
-            Open WhatsApp > Linked Devices > Link with phone number > Enter Code
+    <div class="card">
+        <div class="header">Secure Device Linking</div>
+        <div class="subheader">Connect your WhatsApp account seamlessly</div>
+        
+        <div class="input-group">
+            <span class="flag">🇮🇳</span>
+            <span class="country-code">+91</span>
+            <div class="divider"></div>
+            <input type="tel" id="phone" placeholder="Enter phone number">
+            <div class="clear-btn" onclick="clearInput()">✕</div>
         </div>
+        <div class="hint">Example: 9876543210</div>
+
+        <div class="steps-container">
+            <strong>How to link:</strong><br>
+            1. Enter your number and tap generate.<br>
+            2. Open WhatsApp on your primary phone.<br>
+            3. Tap Menu (⋮) > <strong>Linked Devices</strong>.<br>
+            4. Select <strong>Link with phone number</strong>.<br>
+            5. Enter the 8-character code shown below.
+        </div>
+
+        <div class="code-container" id="code-area">
+            <div class="code-box" id="c0"></div>
+            <div class="code-box" id="c1"></div>
+            <div class="code-box" id="c2"></div>
+            <div class="code-box" id="c3"></div>
+            <div class="code-dash">-</div>
+            <div class="code-box" id="c4"></div>
+            <div class="code-box" id="c5"></div>
+            <div class="code-box" id="c6"></div>
+            <div class="code-box" id="c7"></div>
+        </div>
+
+        <div class="footer-text">
+            <span class="highlight">Important Notes:</span>
+            • Keep this page open while entering the code.<br>
+            • Ensure your internet connection is stable.<br>
+            • Codes expire automatically after a few minutes.
+        </div>
+
+        <button class="action-btn" id="btn" onclick="getPairingCode()">Generate Pairing Code</button>
+        <div id="status" class="status-msg"></div>
     </div>
 
     <script>
-        async function getPairingCode() {
-            const phone = document.getElementById('phone').value;
-            const btn = document.getElementById('btn');
-            const resultDiv = document.getElementById('result');
-            const instructions = document.getElementById('instructions');
-            
-            if (!phone) return alert("Please enter a phone number");
+        function clearInput() {
+            document.getElementById('phone').value = '';
+            document.getElementById('status').innerText = '';
+            resetCodeBoxes();
+        }
 
-            btn.innerText = "Generating...";
+        function resetCodeBoxes() {
+            for (let i = 0; i < 8; i++) {
+                let box = document.getElementById('c' + i);
+                box.innerText = '';
+                box.style.background = '#e4e6eb';
+                box.style.color = '#1c1e21';
+            }
+        }
+
+        async function getPairingCode() {
+            let phone = document.getElementById('phone').value.trim();
+            const btn = document.getElementById('btn');
+            const statusMsg = document.getElementById('status');
+            
+            statusMsg.innerText = '';
+            
+            // Auto-append 91 if user only enters 10 digit number
+            if (phone.length === 10) {
+                phone = "91" + phone;
+            }
+
+            if (!phone || phone.length < 10) {
+                statusMsg.innerText = "Please enter a valid phone number";
+                return;
+            }
+
+            btn.innerText = "Generating Code...";
             btn.disabled = true;
+            resetCodeBoxes();
 
             try {
-                const response = await fetch('/pair?phone=' + phone);
+                const response = await fetch('/pair?phone=' + encodeURIComponent(phone));
                 const text = await response.text();
                 
                 if (response.ok) {
                     if (text === "Already Linked") {
-                        resultDiv.innerText = "Linked!";
-                        resultDiv.style.color = "#25D366";
+                        statusMsg.innerText = "This device is already linked!";
+                        statusMsg.style.color = "#25D366";
                     } else {
-                        resultDiv.innerText = text.slice(0, 4) + '-' + text.slice(4);
-                        instructions.style.display = "block";
+                        let cleanCode = text.replace('-', '');
+                        for (let i = 0; i < 8; i++) {
+                            if (cleanCode[i]) {
+                                let box = document.getElementById('c' + i);
+                                box.innerText = cleanCode[i];
+                                box.style.background = '#e8f9f0'; // Light WhatsApp green background
+                                box.style.color = '#128C7E'; // Dark WhatsApp green text
+                            }
+                        }
                     }
                 } else {
-                    alert("Error: " + text);
+                    statusMsg.innerText = "Error: " + text;
                 }
             } catch (error) {
-                alert("Network Error");
+                statusMsg.innerText = "Network Error! Please try again.";
             }
-            btn.innerText = "Generate Code";
+            
+            btn.innerText = "Generate Pairing Code";
             btn.disabled = false;
         }
     </script>
 </body>
 </html>
-
-
-
-
-
