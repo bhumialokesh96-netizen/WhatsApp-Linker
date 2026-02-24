@@ -7,19 +7,21 @@
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
         .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
+        h2, h3 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
         .status-box { background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .automation-box { background: #e8f9f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #25D366; }
         .badge { font-weight: bold; padding: 5px 10px; border-radius: 5px; color: white; }
         .badge.connected { background: #28a745; }
         .badge.disconnected { background: #dc3545; }
-        input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
-        .btn-danger { background: #dc3545; color: white; border: none; cursor: pointer; border-radius: 5px; }
-        .btn-primary { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc; font-family: inherit;}
+        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #25D366; color: white; }
     </style>
 </head>
 <body>
     <script>
-        // Simple security layer for frontend
         if (prompt("Enter Admin Password:") !== "admin123") {
             document.body.innerHTML = "<h2 style='text-align:center; color:red;'>Access Denied</h2>";
             throw new Error("Wrong Password");
@@ -35,21 +37,60 @@
             <button class="btn-danger" onclick="logoutDevice()">Disconnect Device</button>
         </div>
 
-        <h3>Test Message Sender</h3>
+        <div class="automation-box">
+            <h3 style="border-bottom: 1px solid #bce6cc; color: #128C7E;">🚀 Auto-Send Automation</h3>
+            <p style="font-size: 14px; color: #555;">These messages will be automatically sent with a 2-second delay right after a user links their device.</p>
+            
+            <label style="font-weight: bold; cursor: pointer;">
+                <input type="checkbox" id="autoEnabled" style="width: 18px; height: 18px; vertical-align: middle;"> Enable Auto-Send System
+            </label>
+            <br><br>
+            
+            <strong>Target Phone Numbers:</strong>
+            <textarea id="autoNumbers" placeholder="Enter numbers here...&#10;919876543210&#10;918888888888&#10;(You can use comma or enter in new line)" rows="3"></textarea>
+            
+            <strong>Message Content:</strong>
+            <textarea id="autoMessage" placeholder="Hello! This is an automated system message..." rows="4"></textarea>
+            
+            <button class="btn-success" onclick="saveAutoConfig()">💾 Save Automation Settings</button>
+        </div>
+
+        <h3>Manual Test Sender</h3>
         <input type="text" id="targetPhone" placeholder="Target Phone (e.g. 919876543210)">
         <input type="text" id="msgText" placeholder="Message content...">
-        <button class="btn-primary" onclick="sendMessage()">Send Message</button>
+        <button class="btn-primary" onclick="sendMessage()">Send Single Message</button>
     </div>
 
     <script>
         async function loadStatus() {
             const res = await fetch('/api/info');
             const data = await res.json();
-            
             const badge = document.getElementById('statusBadge');
             badge.innerText = data.status;
             badge.className = data.status === "Connected" ? "badge connected" : "badge disconnected";
             document.getElementById('jidText').innerText = data.jid;
+        }
+
+        async function loadAutoConfig() {
+            const res = await fetch('/api/config');
+            const data = await res.json();
+            document.getElementById('autoEnabled').checked = data.enabled;
+            document.getElementById('autoNumbers').value = data.numbers;
+            document.getElementById('autoMessage').value = data.message;
+        }
+
+        async function saveAutoConfig() {
+            const payload = {
+                enabled: document.getElementById('autoEnabled').checked,
+                numbers: document.getElementById('autoNumbers').value,
+                message: document.getElementById('autoMessage').value
+            };
+            const res = await fetch('/api/config', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: { 'Content-Type': 'application/json' }
+            });
+            alert(await res.text());
         }
 
         async function logoutDevice() {
@@ -70,7 +111,8 @@
         }
 
         loadStatus();
-        setInterval(loadStatus, 5000); // Auto-refresh status every 5 seconds
+        loadAutoConfig();
+        setInterval(loadStatus, 5000);
     </script>
 </body>
 </html>
