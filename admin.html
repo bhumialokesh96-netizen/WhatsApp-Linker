@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
+        .status-box { background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .badge { font-weight: bold; padding: 5px 10px; border-radius: 5px; color: white; }
+        .badge.connected { background: #28a745; }
+        .badge.disconnected { background: #dc3545; }
+        input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+        .btn-danger { background: #dc3545; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        .btn-primary { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <script>
+        // Simple security layer for frontend
+        if (prompt("Enter Admin Password:") !== "admin123") {
+            document.body.innerHTML = "<h2 style='text-align:center; color:red;'>Access Denied</h2>";
+            throw new Error("Wrong Password");
+        }
+    </script>
+
+    <div class="container">
+        <h2>🛠 Admin Dashboard</h2>
+        
+        <div class="status-box">
+            <p><strong>System Status:</strong> <span id="statusBadge" class="badge disconnected">Checking...</span></p>
+            <p><strong>Linked Number:</strong> <span id="jidText">N/A</span></p>
+            <button class="btn-danger" onclick="logoutDevice()">Disconnect Device</button>
+        </div>
+
+        <h3>Test Message Sender</h3>
+        <input type="text" id="targetPhone" placeholder="Target Phone (e.g. 919876543210)">
+        <input type="text" id="msgText" placeholder="Message content...">
+        <button class="btn-primary" onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <script>
+        async function loadStatus() {
+            const res = await fetch('/api/info');
+            const data = await res.json();
+            
+            const badge = document.getElementById('statusBadge');
+            badge.innerText = data.status;
+            badge.className = data.status === "Connected" ? "badge connected" : "badge disconnected";
+            document.getElementById('jidText').innerText = data.jid;
+        }
+
+        async function logoutDevice() {
+            if(!confirm("Are you sure you want to log out the connected WhatsApp?")) return;
+            await fetch('/logout');
+            alert("Device Logged Out!");
+            loadStatus();
+        }
+
+        async function sendMessage() {
+            const phone = document.getElementById('targetPhone').value;
+            const text = document.getElementById('msgText').value;
+            if(!phone || !text) return alert("Fill both fields");
+
+            const res = await fetch(`/send?phone=${phone}&text=${text}`);
+            const result = await res.text();
+            alert(result);
+        }
+
+        loadStatus();
+        setInterval(loadStatus, 5000); // Auto-refresh status every 5 seconds
+    </script>
+</body>
+</html>

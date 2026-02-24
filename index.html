@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link WhatsApp Device</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #e5ddd5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 350px; width: 100%; }
+        h2 { color: #075E54; margin-bottom: 5px; }
+        p { color: #555; font-size: 14px; margin-bottom: 25px; }
+        input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; margin-bottom: 15px; outline: none; }
+        input:focus { border-color: #25D366; }
+        button { background-color: #25D366; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.3s; }
+        button:hover { background-color: #128C7E; }
+        .code-display { font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #075E54; margin-top: 25px; display: block; }
+        .instructions { font-size: 13px; color: #888; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Link Device</h2>
+        <p>Enter number with country code (e.g., 919876543210)</p>
+        
+        <input type="number" id="phone" placeholder="91XXXXXXXXXX" />
+        <button id="btn" onclick="getPairingCode()">Generate Code</button>
+
+        <div id="result" class="code-display"></div>
+        <div id="instructions" class="instructions">
+            Open WhatsApp > Linked Devices > Link with phone number > Enter Code
+        </div>
+    </div>
+
+    <script>
+        async function getPairingCode() {
+            const phone = document.getElementById('phone').value;
+            const btn = document.getElementById('btn');
+            const resultDiv = document.getElementById('result');
+            const instructions = document.getElementById('instructions');
+            
+            if (!phone) return alert("Please enter a phone number");
+
+            btn.innerText = "Generating...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/pair?phone=' + phone);
+                const text = await response.text();
+                
+                if (response.ok) {
+                    if (text === "Already Linked") {
+                        resultDiv.innerText = "Linked!";
+                        resultDiv.style.color = "#25D366";
+                    } else {
+                        resultDiv.innerText = text.slice(0, 4) + '-' + text.slice(4);
+                        instructions.style.display = "block";
+                    }
+                } else {
+                    alert("Error: " + text);
+                }
+            } catch (error) {
+                alert("Network Error");
+            }
+            btn.innerText = "Generate Code";
+            btn.disabled = false;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
