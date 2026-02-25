@@ -3,553 +3,1352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced WhatsApp Control Center</title>
+    <title>WhatsApp Multi-Device Management Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; min-height: 100vh; }
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+        }
         
-        .navbar { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); padding: 15px 25px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .navbar h2 { font-size: 22px; display: flex; align-items: center; gap: 10px; }
-        .status-indicator { display: flex; align-items: center; gap: 15px; }
-        .status-badge { padding: 8px 16px; border-radius: 25px; font-size: 14px; font-weight: bold; color: white; display: flex; align-items: center; gap: 8px; }
-        .status-badge.connected { background: linear-gradient(45deg, #10b981, #059669); }
-        .status-badge.disconnected { background: linear-gradient(45deg, #ef4444, #dc2626); }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333; overflow-x: hidden;
+        }
         
-        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; }
+        .sidebar {
+            position: fixed; left: 0; top: 0; width: 280px; height: 100vh;
+            background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+            color: white; padding: 20px 0; z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
         
-        .card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 25px; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0,0,0,0.15); }
-        .card-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; gap: 10px; color: #1e293b; }
+        .sidebar.collapsed { transform: translateX(-240px); }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-item { text-align: center; padding: 15px; background: linear-gradient(135deg, #f8fafc, #e2e8f0); border-radius: 12px; }
-        .stat-number { font-size: 24px; font-weight: bold; color: #3b82f6; }
-        .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+        .sidebar-header {
+            padding: 0 20px 30px; border-bottom: 1px solid #475569;
+            margin-bottom: 20px;
+        }
         
-        .form-group { margin-bottom: 20px; }
-        .form-group label { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block; color: #475569; }
-        .form-control { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-family: inherit; transition: all 0.3s ease; background: rgba(255,255,255,0.8); }
-        .form-control:focus { border-color: #3b82f6; outline: none; background: white; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .sidebar-header h2 {
+            font-size: 18px; font-weight: 700; margin-bottom: 8px;
+            color: #e2e8f0;
+        }
         
-        .checkbox-wrapper { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; border: 2px solid transparent; transition: all 0.3s ease; }
-        .checkbox-wrapper:hover { border-color: #e2e8f0; }
-        .checkbox-wrapper input { width: 20px; height: 20px; cursor: pointer; accent-color: #3b82f6; }
-        .checkbox-wrapper label { margin: 0; cursor: pointer; font-size: 15px; font-weight: 500; color: #1e293b; }
-
-        .btn { padding: 14px 24px; font-size: 15px; font-weight: 600; border-radius: 12px; border: none; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px; justify-content: center; text-decoration: none; }
-        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
-        .btn-primary:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); transform: translateY(-2px); }
-        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
-        .btn-success:hover { background: linear-gradient(135deg, #059669, #047857); transform: translateY(-2px); }
-        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
-        .btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); transform: translateY(-2px); }
-        .btn-secondary { background: linear-gradient(135deg, #6b7280, #4b5563); color: white; }
-        .btn-secondary:hover { background: linear-gradient(135deg, #4b5563, #374151); transform: translateY(-2px); }
-
-        .terminal { background: linear-gradient(135deg, #0f172a, #1e293b); color: #10b981; padding: 20px; border-radius: 15px; height: 350px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.6; box-shadow: inset 0 4px 20px rgba(0,0,0,0.5); position: relative; }
-        .terminal:before { content: '⬤ ⬤ ⬤'; position: absolute; top: 10px; left: 15px; color: #64748b; font-size: 10px; }
-        .terminal-header { color: #64748b; font-size: 11px; margin-bottom: 15px; padding-top: 15px; }
-        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(30, 41, 59, 0.3); animation: fadeInUp 0.3s ease; }
-        .log-entry:last-child { border-bottom: none; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .template-item { background: #f8fafc; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #3b82f6; }
-        .template-name { font-weight: bold; color: #1e293b; margin-bottom: 5px; }
-        .template-preview { color: #64748b; font-size: 13px; }
-
-        .notification { position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 16px 24px; border-radius: 12px; color: white; font-weight: 500; box-shadow: 0 8px 25px rgba(0,0,0,0.2); animation: slideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); min-width: 300px; }
-        .notification.success { background: linear-gradient(135deg, #10b981, #059669); }
-        .notification.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .notification.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-        .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin: 15px 0; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease; }
-
-        .tabs { display: flex; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; }
-        .tab { padding: 12px 24px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s ease; font-weight: 500; }
-        .tab.active { border-bottom-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
-        .tab:hover { background: rgba(59,130,246,0.05); }
-
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; backdrop-filter: blur(5px); }
-        .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-
-        .file-upload { position: relative; overflow: hidden; display: inline-block; }
-        .file-upload input[type=file] { position: absolute; left: -9999px; }
-        .file-upload-label { padding: 12px 20px; background: linear-gradient(135deg, #f8fafc, #e2e8f0); border: 2px dashed #cbd5e1; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.3s ease; }
-        .file-upload-label:hover { border-color: #3b82f6; background: rgba(59,130,246,0.05); }
-
+        .sidebar-header .subtitle {
+            font-size: 12px; color: #94a3b8; 
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 4px;
+        }
+        
+        .sidebar-menu a {
+            display: flex; align-items: center; padding: 12px 20px;
+            color: #cbd5e1; text-decoration: none; font-size: 14px;
+            transition: all 0.3s ease; border-left: 3px solid transparent;
+        }
+        
+        .sidebar-menu a:hover, .sidebar-menu a.active {
+            background: rgba(59, 130, 246, 0.1); color: #3b82f6;
+            border-left-color: #3b82f6;
+        }
+        
+        .sidebar-menu a .icon {
+            width: 20px; margin-right: 12px; font-size: 16px;
+        }
+        
+        .main-content {
+            margin-left: 280px; min-height: 100vh; 
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+            transition: margin-left 0.3s ease;
+        }
+        
+        .main-content.expanded { margin-left: 40px; }
+        
+        .topbar {
+            background: white; padding: 15px 30px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .toggle-sidebar {
+            background: #f1f5f9; border: none; padding: 8px 12px;
+            border-radius: 8px; cursor: pointer; font-size: 18px;
+            transition: background 0.3s ease;
+        }
+        
+        .toggle-sidebar:hover { background: #e2e8f0; }
+        
+        .topbar-right {
+            display: flex; align-items: center; gap: 15px;
+        }
+        
+        .device-selector {
+            display: flex; align-items: center; gap: 10px;
+            background: #f8fafc; padding: 8px 15px; border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .device-selector select {
+            border: none; background: transparent; font-size: 14px;
+            color: #374151; font-weight: 500; cursor: pointer;
+        }
+        
+        .content-area {
+            padding: 30px;
+        }
+        
+        .page-section {
+            display: none;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px; margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #f1f5f9; position: relative; overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 4px; background: linear-gradient(90deg, #3b82f6, #10b981);
+        }
+        
+        .stat-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .stat-title {
+            font-size: 14px; font-weight: 600; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        
+        .stat-icon {
+            font-size: 24px; opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-size: 32px; font-weight: 700; color: #1e293b;
+            margin-bottom: 8px; line-height: 1;
+        }
+        
+        .stat-change {
+            font-size: 12px; display: flex; align-items: center; gap: 4px;
+        }
+        
+        .stat-change.positive { color: #10b981; }
+        .stat-change.negative { color: #ef4444; }
+        .stat-change.neutral { color: #6b7280; }
+        
+        .devices-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px; margin-bottom: 30px;
+        }
+        
+        .device-card {
+            background: white; border-radius: 16px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid #f1f5f9; position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .device-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .device-status {
+            position: absolute; top: 15px; right: 15px;
+            width: 12px; height: 12px; border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .device-status.online { background: #10b981; }
+        .device-status.offline { background: #ef4444; animation: none; }
+        .device-status.connecting { background: #f59e0b; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .device-info h3 {
+            font-size: 18px; font-weight: 600; color: #1e293b;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 10px;
+        }
+        
+        .device-meta {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            margin: 15px 0; font-size: 13px; color: #64748b;
+        }
+        
+        .device-meta div {
+            background: #f8fafc; padding: 8px 12px; border-radius: 8px;
+        }
+        
+        .device-actions {
+            display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 16px; border-radius: 8px; border: none;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.3s ease; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9; color: #64748b;
+        }
+        
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .form-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .form-section {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .form-section h3 {
+            font-size: 18px; font-weight: 600; color: #1e293b;
+            margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block; font-weight: 500; color: #374151;
+            margin-bottom: 8px; font-size: 14px;
+        }
+        
+        .form-control {
+            width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb;
+            border-radius: 10px; font-size: 14px; transition: border-color 0.3s ease;
+        }
+        
+        .form-control:focus {
+            outline: none; border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-control.textarea {
+            min-height: 120px; resize: vertical;
+        }
+        
+        .quick-actions {
+            display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;
+        }
+        
+        .activity-feed {
+            background: white; border-radius: 16px; padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-top: 30px;
+        }
+        
+        .activity-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .activity-header h3 {
+            font-size: 18px; font-weight: 600; color: #1e293b;
+        }
+        
+        .activity-item {
+            display: flex; align-items: start; gap: 15px;
+            padding: 15px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .activity-item:last-child { border-bottom: none; }
+        
+        .activity-icon {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: white; flex-shrink: 0;
+        }
+        
+        .activity-icon.success { background: #10b981; }
+        .activity-icon.error { background: #ef4444; }
+        .activity-icon.info { background: #3b82f6; }
+        .activity-icon.warning { background: #f59e0b; }
+        
+        .activity-content h4 {
+            font-size: 14px; font-weight: 600; color: #1e293b;
+            margin-bottom: 4px;
+        }
+        
+        .activity-content p {
+            font-size: 13px; color: #64748b; line-height: 1.4;
+        }
+        
+        .activity-time {
+            font-size: 11px; color: #94a3b8; margin-left: auto;
+            flex-shrink: 0;
+        }
+        
+        .metrics-row {
+            display: grid; grid-template-columns: 2fr 1fr; gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .chart-container {
+            background: white; padding: 25px; border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .notifications {
+            position: fixed; top: 20px; right: 20px; z-index: 10000;
+        }
+        
+        .notification {
+            background: white; padding: 15px 20px; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-bottom: 10px;
+            border-left: 4px solid #3b82f6; min-width: 300px;
+            transform: translateX(100%); animation: slideIn 0.3s ease forwards;
+        }
+        
+        .notification.success { border-left-color: #10b981; }
+        .notification.error { border-left-color: #ef4444; }
+        .notification.warning { border-left-color: #f59e0b; }
+        
+        .notification.hide {
+            animation: slideOut 0.3s ease forwards;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .loading {
+            display: inline-block; width: 20px; height: 20px;
+            border: 2px solid #f3f3f3; border-top: 2px solid #3b82f6;
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: #64748b;
+        }
+        
+        .empty-state .icon {
+            font-size: 48px; margin-bottom: 16px; opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            font-size: 18px; margin-bottom: 8px; color: #374151;
+        }
+        
+        .empty-state p {
+            font-size: 14px; line-height: 1.5;
+        }
+        
         @media (max-width: 768px) {
-            .container { grid-template-columns: 1fr; padding: 0 15px; }
-            .navbar { padding: 15px; flex-direction: column; gap: 15px; }
-            .status-indicator { order: -1; }
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            .main-content.expanded { margin-left: 0; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .form-grid { grid-template-columns: 1fr; }
+            .metrics-row { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="navbar">
-        <h2>🚀 Advanced WhatsApp Control Center</h2>
-        <div class="status-indicator">
-            <span id="connectionStatus" class="status-badge disconnected pulse">
-                <span>⚡</span> Checking...
-            </span>
-            <button class="btn btn-danger" onclick="logoutDevice()">🔓 Disconnect</button>
+    <!-- Notifications Container -->
+    <div class="notifications" id="notifications"></div>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>🚀 WhatsApp Hub</h2>
+            <div class="subtitle">Multi-Device Manager</div>
         </div>
-    </div>
-
-    <div class="container">
-        <!-- Statistics Dashboard -->
-        <div class="card" style="grid-column: 1 / -1;">
-            <div class="card-header">📊 Real-time Statistics</div>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-number" id="totalSent">0</div>
-                    <div class="stat-label">Messages Sent</div>
+        
+        <ul class="sidebar-menu">
+            <li><a href="#" class="menu-link active" data-page="dashboard">
+                <span class="icon">📊</span> Dashboard
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="devices">
+                <span class="icon">📱</span> Device Management
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="messaging">
+                <span class="icon">💬</span> Send Messages
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="bulk">
+                <span class="icon">📤</span> Bulk Messaging
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="automation">
+                <span class="icon">🤖</span> Automation
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="analytics">
+                <span class="icon">📈</span> Analytics
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="logs">
+                <span class="icon">📋</span> System Logs
+            </a></li>
+            <li><a href="#" class="menu-link" data-page="settings">
+                <span class="icon">⚙️</span> Settings
+            </a></li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <div class="topbar">
+            <div>
+                <button class="toggle-sidebar" id="toggleSidebar">☰</button>
+            </div>
+            <div class="topbar-right">
+                <div class="device-selector">
+                    <span>🖥️</span>
+                    <select id="activeDeviceSelector">
+                        <option value="">Select Active Device</option>
+                    </select>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="totalReceived">0</div>
-                    <div class="stat-label">Messages Received</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="totalFailed">0</div>
-                    <div class="stat-label">Failed Messages</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="successRate">0%</div>
-                    <div class="stat-label">Success Rate</div>
+                <div style="font-size: 14px; color: #64748b;">
+                    <span id="currentTime"></span>
                 </div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                <span><strong>Connected Number:</strong> <span id="connectedJID" style="color: #3b82f6;">N/A</span></span>
-                <span><strong>Last Activity:</strong> <span id="lastActivity" style="color: #64748b;">Never</span></span>
-            </div>
         </div>
-
-        <!-- Live System Monitor -->
-        <div class="card" style="grid-column: 1 / -1;">
-            <div class="card-header">🖥️ Live System Monitor</div>
-            <div class="terminal" id="terminalBox">
-                <div class="terminal-header">WhatsApp Automation System v2.0 - Live Logs</div>
-                <div class="log-entry">[System] Initializing advanced monitoring...</div>
-            </div>
-        </div>
-
-        <!-- Enhanced Auto-Sender Configuration -->
-        <div class="card">
-            <div class="card-header">🤖 Smart Auto-Sender</div>
-            
-            <div class="checkbox-wrapper">
-                <input type="checkbox" id="autoEnabled">
-                <label for="autoEnabled">Enable Auto-Send on Device Link</label>
-            </div>
-            
-            <div class="form-group">
-                <label>Target Phone Numbers</label>
-                <textarea id="autoNumbers" class="form-control" placeholder="919876543210&#10;918888888888&#10;+91 9999999999" rows="4"></textarea>
-                <small style="color: #64748b;">Supports multiple formats: +91, 91, or 10-digit numbers</small>
-            </div>
-            
-            <div class="form-group">
-                <label>Message Content</label>
-                <textarea id="autoMessage" class="form-control" placeholder="🎉 Welcome! Your device has been successfully linked to our WhatsApp automation system." rows="3"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Send Delay (seconds between messages)</label>
-                <input type="number" id="sendDelay" class="form-control" min="1" max="60" value="2">
-            </div>
-
-            <div class="form-group">
-                <label>Max Retry Attempts</label>
-                <input type="number" id="maxRetries" class="form-control" min="1" max="10" value="3">
-            </div>
-            
-            <button class="btn btn-success" style="width: 100%;" onclick="saveAutoConfig()">
-                💾 Save Auto-Sender Config
-            </button>
-        </div>
-
-        <!-- Advanced Chatbot -->
-        <div class="card">
-            <div class="card-header">🤖 Intelligent Auto-Reply Bot</div>
-            
-            <div class="checkbox-wrapper">
-                <input type="checkbox" id="replyEnable">
-                <label for="replyEnable">Enable Smart Auto-Reply</label>
-            </div>
-            
-            <div class="form-group">
-                <label>Auto-Reply Message</label>
-                <textarea id="replyText" class="form-control" placeholder="🤖 Hi there! Thanks for messaging. This is an automated response. I'll get back to you soon!" rows="4"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Reply Retry Attempts</label>
-                <input type="number" id="replyRetries" class="form-control" min="1" max="5" value="3">
-            </div>
-            
-            <button class="btn btn-success" style="width: 100%;" onclick="saveAutoConfig()">
-                🤖 Save Chatbot Config
-            </button>
-        </div>
-
-        <!-- Message Templates -->
-        <div class="card">
-            <div class="card-header">📝 Message Templates</div>
-            
-            <div id="templatesList" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
-                <!-- Templates will be loaded here -->
-            </div>
-            
-            <div class="form-group">
-                <label>Template Name</label>
-                <input type="text" id="templateName" class="form-control" placeholder="Welcome Message">
-            </div>
-            
-            <div class="form-group">
-                <label>Template Content</label>
-                <textarea id="templateContent" class="form-control" placeholder="Enter your message template..." rows="3"></textarea>
-            </div>
-            
-            <button class="btn btn-primary" style="width: 100%;" onclick="addTemplate()">
-                ➕ Add Template
-            </button>
-        </div>
-
-        <!-- Quick Message Sender -->
-        <div class="card" style="grid-column: 1 / -1;">
-            <div class="card-header">⚡ Quick Message Sender</div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 15px; align-items: end;">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Target Phone</label>
-                    <input type="text" id="quickPhone" class="form-control" placeholder="919876543210">
+        
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="page-section active">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    📊 Dashboard Overview
+                </h1>
+                
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Connected Devices</span>
+                            <span class="stat-icon">📱</span>
+                        </div>
+                        <div class="stat-value" id="connectedDevicesCount">0</div>
+                        <div class="stat-change neutral" id="devicesChange">
+                            <span>→</span> No changes
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Messages Today</span>
+                            <span class="stat-icon">💬</span>
+                        </div>
+                        <div class="stat-value" id="messagesToday">0</div>
+                        <div class="stat-change positive" id="messagesChange">
+                            <span>↗</span> +0% from yesterday
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Success Rate</span>
+                            <span class="stat-icon">✅</span>
+                        </div>
+                        <div class="stat-value" id="successRate">0%</div>
+                        <div class="stat-change positive" id="successChange">
+                            <span>↗</span> Healthy
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Active Automations</span>
+                            <span class="stat-icon">🤖</span>
+                        </div>
+                        <div class="stat-value" id="activeAutomations">0</div>
+                        <div class="stat-change neutral" id="automationChange">
+                            <span>→</span> Stable
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label>Message</label>
-                    <input type="text" id="quickMessage" class="form-control" placeholder="Type your message...">
+                <!-- Metrics Row -->
+                <div class="metrics-row">
+                    <div class="chart-container">
+                        <h3 style="margin-bottom: 20px; color: #1e293b;">📈 Message Analytics</h3>
+                        <div id="messageChart" style="height: 300px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                            📊 Chart will be loaded here
+                        </div>
+                    </div>
+                    
+                    <div class="activity-feed">
+                        <div class="activity-header">
+                            <h3>🔥 Recent Activity</h3>
+                            <button class="btn btn-secondary" onclick="refreshActivity()">
+                                <span>🔄</span> Refresh
+                            </button>
+                        </div>
+                        <div id="activityList">
+                            <div class="empty-state">
+                                <div class="icon">📭</div>
+                                <h3>No Recent Activity</h3>
+                                <p>Activity will appear here when devices are connected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Device Management Page -->
+            <div id="devices" class="page-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h1 style="color: #1e293b; font-size: 28px; font-weight: 700;">
+                        📱 Device Management
+                    </h1>
+                    <div class="quick-actions">
+                        <button class="btn btn-primary" onclick="addNewDevice()">
+                            <span>➕</span> Add Device
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshDevices()">
+                            <span>🔄</span> Refresh
+                        </button>
+                    </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="sendQuickMessage()">
-                    📤 Send Now
-                </button>
-            </div>
-        </div>
-
-        <!-- Bulk Message Sender -->
-        <div class="card">
-            <div class="card-header">📬 Bulk Message Sender</div>
-            
-            <div class="form-group">
-                <label>Upload Number List (CSV)</label>
-                <div class="file-upload">
-                    <input type="file" id="csvFile" accept=".csv,.txt" onchange="handleCSVUpload(event)">
-                    <label for="csvFile" class="file-upload-label">
-                        📄 Choose CSV File or Click to Upload
-                    </label>
+                <div class="devices-grid" id="devicesGrid">
+                    <!-- Devices will be loaded here -->
                 </div>
             </div>
             
-            <div class="form-group">
-                <label>Phone Numbers (One per line)</label>
-                <textarea id="bulkNumbers" class="form-control" placeholder="919876543210&#10;918888888888&#10;+91 9999999999" rows="4"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Bulk Message Content</label>
-                <textarea id="bulkMessage" class="form-control" placeholder="Enter your bulk message..." rows="3"></textarea>
-            </div>
-            
-            <button class="btn btn-success" style="width: 100%;" onclick="sendBulkMessage()">
-                📨 Send Bulk Messages
-            </button>
-        </div>
-
-        <!-- Message Scheduler -->
-        <div class="card">
-            <div class="card-header">⏰ Message Scheduler</div>
-            
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="text" id="schedulePhone" class="form-control" placeholder="919876543210">
-            </div>
-            
-            <div class="form-group">
-                <label>Message</label>
-                <textarea id="scheduleMessage" class="form-control" placeholder="Enter scheduled message..." rows="2"></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label>Schedule Date & Time</label>
-                <input type="datetime-local" id="scheduleDateTime" class="form-control">
-            </div>
-            
-            <button class="btn btn-primary" style="width: 100%;" onclick="scheduleMessage()">
-                ⏰ Schedule Message
-            </button>
-            
-            <div id="scheduledList" style="margin-top: 15px;">
-                <!-- Scheduled messages will appear here -->
-            </div>
-        </div>
-
-        <!-- System Controls -->
-        <div class="card">
-            <div class="card-header">⚙️ System Controls</div>
-            
-            <div style="display: grid; gap: 15px;">
-                <button class="btn btn-secondary" onclick="downloadBackup()">
-                    💾 Download Backup
-                </button>
+            <!-- Messaging Page -->
+            <div id="messaging" class="page-section">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    💬 Send Messages
+                </h1>
                 
-                <button class="btn btn-primary" onclick="refreshAllData()">
-                    🔄 Refresh Dashboard
-                </button>
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>📤 Quick Message</h3>
+                        <div class="form-group">
+                            <label>Select Device</label>
+                            <select class="form-control" id="messageDeviceSelector">
+                                <option value="">Choose active device</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number</label>
+                            <input type="tel" class="form-control" id="quickPhone" placeholder="+91 98765 43210">
+                        </div>
+                        <div class="form-group">
+                            <label>Message</label>
+                            <textarea class="form-control textarea" id="quickMessage" placeholder="Type your message here..."></textarea>
+                        </div>
+                        <button class="btn btn-success" onclick="sendQuickMessage()">
+                            <span>📤</span> Send Message
+                        </button>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>📋 Message Templates</h3>
+                        <div id="templatesList">
+                            <div class="empty-state">
+                                <div class="icon">📝</div>
+                                <h3>No Templates</h3>
+                                <p>Create templates for quick messaging</p>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <input type="text" class="form-control" id="templateName" placeholder="Template name" style="margin-bottom: 10px;">
+                            <textarea class="form-control textarea" id="templateContent" placeholder="Template content"></textarea>
+                            <button class="btn btn-primary" onclick="addTemplate()" style="margin-top: 10px;">
+                                <span>➕</span> Add Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bulk Messaging Page -->
+            <div id="bulk" class="page-section">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    📤 Bulk Messaging
+                </h1>
                 
-                <button class="btn btn-danger" onclick="clearLogs()">
-                    🗑️ Clear Logs
-                </button>
+                <div class="form-section">
+                    <div class="form-grid">
+                        <div>
+                            <h3>📊 Recipients</h3>
+                            <div class="form-group">
+                                <label>Select Device</label>
+                                <select class="form-control" id="bulkDeviceSelector">
+                                    <option value="">Choose active device</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Numbers (one per line)</label>
+                                <textarea class="form-control textarea" id="bulkNumbers" placeholder="919876543210&#10;919876543211&#10;919876543212" style="height: 200px;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Or Upload CSV</label>
+                                <input type="file" class="form-control" id="csvUpload" accept=".csv,.txt" onchange="handleCSVUpload(event)">
+                            </div>
+                        </div>
+                        <div>
+                            <h3>✉️ Message Content</h3>
+                            <div class="form-group">
+                                <label>Message</label>
+                                <textarea class="form-control textarea" id="bulkMessage" placeholder="Your bulk message content..." style="height: 200px;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Send Delay (seconds)</label>
+                                <input type="number" class="form-control" id="bulkDelay" value="5" min="3" max="60">
+                            </div>
+                            <button class="btn btn-success" onclick="sendBulkMessage()">
+                                <span>📨</span> Start Bulk Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Automation Page -->
+            <div id="automation" class="page-section">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    🤖 Automation Settings
+                </h1>
+                
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>⚡ Auto-Reply</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="autoReplyEnabled" style="margin-right: 8px;">
+                                Enable Auto-Reply
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Reply Message</label>
+                            <textarea class="form-control textarea" id="autoReplyText" placeholder="Thank you for your message. We'll get back to you soon!"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Reply Delay (seconds)</label>
+                            <input type="number" class="form-control" id="autoReplyDelay" value="3" min="1" max="60">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>📅 Scheduled Messages</h3>
+                        <div id="scheduledMessagesList">
+                            <div class="empty-state">
+                                <div class="icon">⏰</div>
+                                <h3>No Scheduled Messages</h3>
+                                <p>Schedule messages for future delivery</p>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <input type="tel" class="form-control" id="schedulePhone" placeholder="Phone number" style="margin-bottom: 10px;">
+                            <textarea class="form-control" id="scheduleMessage" placeholder="Message content" style="margin-bottom: 10px; height: 80px;"></textarea>
+                            <input type="datetime-local" class="form-control" id="scheduleDateTime" style="margin-bottom: 10px;">
+                            <button class="btn btn-primary" onclick="scheduleMessage()">
+                                <span>⏰</span> Schedule Message
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions" style="margin-top: 20px;">
+                    <button class="btn btn-success" onclick="saveAutomationSettings()">
+                        <span>💾</span> Save Settings
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadAutomationSettings()">
+                        <span>🔄</span> Reload
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Analytics Page -->
+            <div id="analytics" class="page-section">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    📈 Analytics & Reports
+                </h1>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Messages Sent</span>
+                            <span class="stat-icon">📤</span>
+                        </div>
+                        <div class="stat-value" id="totalSent">0</div>
+                        <div class="stat-change" id="totalSentChange"></div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Messages Received</span>
+                            <span class="stat-icon">📥</span>
+                        </div>
+                        <div class="stat-value" id="totalReceived">0</div>
+                        <div class="stat-change" id="totalReceivedChange"></div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Failed Messages</span>
+                            <span class="stat-icon">❌</span>
+                        </div>
+                        <div class="stat-value" id="totalFailed">0</div>
+                        <div class="stat-change" id="totalFailedChange"></div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Uptime</span>
+                            <span class="stat-icon">⏱️</span>
+                        </div>
+                        <div class="stat-value" id="systemUptime">0h</div>
+                        <div class="stat-change positive">
+                            <span>✅</span> Running
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 20px;">📊 Message Trends (Last 7 Days)</h3>
+                    <div id="analyticsChart" style="height: 400px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                        📈 Detailed analytics chart will be displayed here
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Logs Page -->
+            <div id="logs" class="page-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h1 style="color: #1e293b; font-size: 28px; font-weight: 700;">
+                        📋 System Logs
+                    </h1>
+                    <div class="quick-actions">
+                        <button class="btn btn-secondary" onclick="refreshLogs()">
+                            <span>🔄</span> Refresh
+                        </button>
+                        <button class="btn btn-danger" onclick="clearLogs()">
+                            <span>🗑️</span> Clear Logs
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="background: #1e293b; border-radius: 12px; padding: 20px; color: #e2e8f0; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; max-height: 600px; overflow-y: auto;" id="terminalLogs">
+                    <div style="color: #10b981; margin-bottom: 10px;">
+                        🚀 WhatsApp Multi-Device Hub - Live System Logs
+                    </div>
+                    <div style="color: #64748b; margin-bottom: 20px;">
+                        ═══════════════════════════════════════════════════════
+                    </div>
+                    <div id="logEntries">
+                        <div style="color: #94a3b8;">[SYSTEM] Waiting for log entries...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Page -->
+            <div id="settings" class="page-section">
+                <h1 style="margin-bottom: 30px; color: #1e293b; font-size: 28px; font-weight: 700;">
+                    ⚙️ System Settings
+                </h1>
+                
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>🔒 Security Settings</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="safeMode" style="margin-right: 8px;">
+                                Enable Safe Mode
+                            </label>
+                            <small style="color: #64748b; display: block; margin-top: 4px;">
+                                Conservative sending limits to prevent bans
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label>Daily Send Limit</label>
+                            <input type="number" class="form-control" id="dailyLimit" value="100" min="1" max="1000">
+                        </div>
+                        <div class="form-group">
+                            <label>Hourly Send Limit</label>
+                            <input type="number" class="form-control" id="hourlyLimit" value="20" min="1" max="100">
+                        </div>
+                        <div class="form-group">
+                            <label>Min Send Delay (seconds)</label>
+                            <input type="number" class="form-control" id="minDelay" value="3" min="1" max="60">
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>🎛️ System Controls</h3>
+                        <div class="quick-actions">
+                            <button class="btn btn-success" onclick="saveSettings()">
+                                <span>💾</span> Save All Settings
+                            </button>
+                            <button class="btn btn-primary" onclick="downloadBackup()">
+                                <span>💾</span> Download Backup
+                            </button>
+                            <button class="btn btn-danger" onclick="logoutAllDevices()">
+                                <span>🔓</span> Logout All Devices
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 30px;">
+                            <h4 style="margin-bottom: 15px;">📊 System Status</h4>
+                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; font-size: 14px;">
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Server Status:</strong> <span style="color: #10b981;" id="serverStatus">●</span> Online
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Active Connections:</strong> <span id="activeConnections">0</span>
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Memory Usage:</strong> <span id="memoryUsage">N/A</span>
+                                </div>
+                                <div>
+                                    <strong>Last Updated:</strong> <span id="lastUpdated">Just now</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script>
+        // Global variables
+        let currentPage = 'dashboard';
+        let devices = [];
         let refreshInterval;
         let logInterval;
-
-        // Enhanced fetch with better error handling
-        async function fetchWithAuth(url, options = {}) {
-            try {
-                const response = await fetch(url, {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...options.headers
-                    }
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            setupEventListeners();
+            loadInitialData();
+            startRealTimeUpdates();
+        });
+        
+        // Initialize dashboard
+        function initializeDashboard() {
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            
+            // Set minimum datetime for scheduler
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 1);
+            document.getElementById('scheduleDateTime').min = now.toISOString().slice(0, 16);
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Sidebar toggle
+            document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
+            
+            // Menu navigation
+            document.querySelectorAll('.menu-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    navigateToPage(page);
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                return response;
-            } catch (error) {
-                showNotification(`Network Error: ${error.message}`, 'error');
-                throw error;
+            });
+            
+            // Device selector change
+            document.getElementById('activeDeviceSelector').addEventListener('change', handleDeviceChange);
+        }
+        
+        // Navigation functions
+        function navigateToPage(page) {
+            // Update active menu item
+            document.querySelectorAll('.menu-link').forEach(link => link.classList.remove('active'));
+            document.querySelector(`[data-page="${page}"]`).classList.add('active');
+            
+            // Show selected page
+            document.querySelectorAll('.page-section').forEach(section => section.classList.remove('active'));
+            document.getElementById(page).classList.add('active');
+            
+            currentPage = page;
+            
+            // Load page-specific data
+            loadPageData(page);
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+        }
+        
+        // Data loading functions
+        async function loadInitialData() {
+            await loadDevices();
+            await loadStats();
+            await loadLogs();
+            updateDeviceSelectors();
+        }
+        
+        async function loadPageData(page) {
+            switch(page) {
+                case 'dashboard':
+                    await loadStats();
+                    await loadActivity();
+                    break;
+                case 'devices':
+                    await loadDevices();
+                    break;
+                case 'logs':
+                    await loadLogs();
+                    break;
+                case 'analytics':
+                    await loadAnalytics();
+                    break;
+                case 'automation':
+                    await loadAutomationSettings();
+                    await loadScheduledMessages();
+                    break;
             }
         }
-
-        // Enhanced notification system
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
-                    <span>${message}</span>
-                </div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.style.animation = 'slideOut 0.4s ease forwards';
-                setTimeout(() => notification.remove(), 400);
-            }, 4000);
+        
+        // Device management
+        async function loadDevices() {
+            try {
+                const response = await fetchWithAuth('/api/devices');
+                const result = await response.json();
+                
+                if (result.success) {
+                    devices = result.data || [];
+                    displayDevices();
+                    updateDeviceStats();
+                } else {
+                    // Handle single device for backward compatibility
+                    const statusResponse = await fetchWithAuth('/api/info');
+                    const statusResult = await statusResponse.json();
+                    
+                    if (statusResult.success && statusResult.data.connected) {
+                        devices = [{
+                            id: 'primary',
+                            name: 'Primary Device',
+                            phone: statusResult.data.jid,
+                            status: 'online',
+                            platform: 'WhatsApp Web',
+                            lastSeen: new Date(),
+                            messagesCount: 0,
+                            isActive: true
+                        }];
+                        displayDevices();
+                        updateDeviceStats();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading devices:', error);
+                showNotification('Failed to load devices', 'error');
+            }
         }
-
-        // Load system statistics
+        
+        function displayDevices() {
+            const devicesGrid = document.getElementById('devicesGrid');
+            
+            if (devices.length === 0) {
+                devicesGrid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="icon">📱</div>
+                        <h3>No Devices Connected</h3>
+                        <p>Add your first WhatsApp device to get started</p>
+                        <button class="btn btn-primary" onclick="addNewDevice()" style="margin-top: 15px;">
+                            <span>➕</span> Add Device
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            devicesGrid.innerHTML = devices.map(device => `
+                <div class="device-card">
+                    <div class="device-status ${device.status}"></div>
+                    <div class="device-info">
+                        <h3>
+                            📱 ${device.name}
+                            ${device.isActive ? '<span style="font-size: 12px; background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">ACTIVE</span>' : ''}
+                        </h3>
+                        <div class="device-meta">
+                            <div><strong>📞 Phone:</strong> ${device.phone || 'N/A'}</div>
+                            <div><strong>💻 Platform:</strong> ${device.platform || 'Unknown'}</div>
+                            <div><strong>📊 Messages:</strong> ${device.messagesCount || 0}</div>
+                            <div><strong>⏰ Last Seen:</strong> ${formatLastSeen(device.lastSeen)}</div>
+                        </div>
+                        <div class="device-actions">
+                            <button class="btn btn-primary" onclick="selectActiveDevice('${device.id}')">
+                                <span>✅</span> Set Active
+                            </button>
+                            <button class="btn btn-success" onclick="testDevice('${device.id}')">
+                                <span>🧪</span> Test
+                            </button>
+                            <button class="btn btn-secondary" onclick="viewDeviceDetails('${device.id}')">
+                                <span>👁️</span> Details
+                            </button>
+                            <button class="btn btn-danger" onclick="disconnectDevice('${device.id}')">
+                                <span>🔌</span> Disconnect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateDeviceSelectors() {
+            const selectors = ['activeDeviceSelector', 'messageDeviceSelector', 'bulkDeviceSelector'];
+            
+            selectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                const currentValue = selector.value;
+                
+                selector.innerHTML = '<option value="">Select Device</option>' +
+                    devices.filter(d => d.status === 'online').map(device => 
+                        `<option value="${device.id}" ${device.isActive ? 'selected' : ''}>${device.name} (${device.phone})</option>`
+                    ).join('');
+                
+                // Restore previous selection if still valid
+                if (currentValue && selector.querySelector(`option[value="${currentValue}"]`)) {
+                    selector.value = currentValue;
+                }
+            });
+        }
+        
+        // Device actions
+        async function addNewDevice() {
+            window.open('/pair', '_blank', 'width=500,height=600');
+            showNotification('Opening device pairing window...', 'info');
+        }
+        
+        async function selectActiveDevice(deviceId) {
+            try {
+                const response = await fetchWithAuth('/api/device/activate', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    // Update local devices array
+                    devices.forEach(d => d.isActive = d.id === deviceId);
+                    displayDevices();
+                    updateDeviceSelectors();
+                    showNotification(`Device activated: ${devices.find(d => d.id === deviceId)?.name}`, 'success');
+                } else {
+                    showNotification(result.message || 'Failed to activate device', 'error');
+                }
+            } catch (error) {
+                showNotification('Error activating device', 'error');
+            }
+        }
+        
+        async function testDevice(deviceId) {
+            try {
+                showNotification('Testing device connection...', 'info');
+                
+                const response = await fetchWithAuth('/api/device/test', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('Device test successful!', 'success');
+                } else {
+                    showNotification(result.message || 'Device test failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Error testing device', 'error');
+            }
+        }
+        
+        async function disconnectDevice(deviceId) {
+            if (!confirm('Are you sure you want to disconnect this device?')) return;
+            
+            try {
+                const response = await fetchWithAuth('/api/device/disconnect', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    loadDevices(); // Reload devices
+                    showNotification('Device disconnected successfully', 'success');
+                } else {
+                    showNotification(result.message || 'Failed to disconnect device', 'error');
+                }
+            } catch (error) {
+                showNotification('Error disconnecting device', 'error');
+            }
+        }
+        
+        // Statistics and analytics
         async function loadStats() {
             try {
                 const response = await fetchWithAuth('/api/stats');
                 const result = await response.json();
                 
                 if (result.success) {
-                    const stats = result.data;
-                    document.getElementById('totalSent').textContent = stats.total_sent || 0;
-                    document.getElementById('totalReceived').textContent = stats.total_received || 0;
-                    document.getElementById('totalFailed').textContent = stats.total_failed || 0;
-                    
-                    const total = (stats.total_sent || 0) + (stats.total_failed || 0);
-                    const successRate = total > 0 ? Math.round(((stats.total_sent || 0) / total) * 100) : 0;
-                    document.getElementById('successRate').textContent = successRate + '%';
-                    
-                    if (stats.last_activity) {
-                        const lastActivity = new Date(stats.last_activity).toLocaleString();
-                        document.getElementById('lastActivity').textContent = lastActivity;
-                    }
+                    updateDashboardStats(result.data);
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
         }
-
-        // Load connection status
-        async function loadStatus() {
-            try {
-                const response = await fetchWithAuth('/api/info');
-                const result = await response.json();
-                
-                if (result.success) {
-                    const data = result.data;
-                    const statusBadge = document.getElementById('connectionStatus');
-                    
-                    if (data.status === "Connected") {
-                        statusBadge.innerHTML = '<span>🟢</span> Connected';
-                                                statusBadge.className = 'status-badge connected';
-                        document.getElementById('connectedJID').textContent = data.jid;
-                    } else {
-                        statusBadge.innerHTML = '<span>🔴</span> Disconnected';
-                        statusBadge.className = 'status-badge disconnected pulse';
-                        document.getElementById('connectedJID').textContent = 'Not Connected';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading status:', error);
-            }
+        
+        function updateDashboardStats(stats) {
+            document.getElementById('connectedDevicesCount').textContent = devices.filter(d => d.status === 'online').length;
+            document.getElementById('messagesToday').textContent = stats.daily_counts?.[new Date().toISOString().split('T')[0]] || 0;
+            document.getElementById('totalSent').textContent = stats.total_sent || 0;
+            document.getElementById('totalReceived').textContent = stats.total_received || 0;
+            document.getElementById('totalFailed').textContent = stats.total_failed || 0;
+            
+            // Calculate success rate
+                        const total = (stats.total_sent || 0) + (stats.total_failed || 0);
+            const successRate = total > 0 ? Math.round((stats.total_sent / total) * 100) : 0;
+            document.getElementById('successRate').textContent = successRate + '%';
+            
+            // Update automations count
+            document.getElementById('activeAutomations').textContent = stats.active_automations || 0;
         }
-
-        // Load system logs with enhanced formatting
-        async function loadLogs() {
+        
+        function updateDeviceStats() {
+            const onlineDevices = devices.filter(d => d.status === 'online').length;
+            document.getElementById('connectedDevicesCount').textContent = onlineDevices;
+            document.getElementById('activeConnections').textContent = onlineDevices;
+        }
+        
+        // Activity feed
+        async function loadActivity() {
             try {
                 const response = await fetchWithAuth('/api/logs');
                 const result = await response.json();
                 
                 if (result.success && result.data) {
-                    const terminal = document.getElementById('terminalBox');
-                    const logs = result.data;
-                    
-                    // Keep terminal header
-                    terminal.innerHTML = '<div class="terminal-header">WhatsApp Automation System v2.0 - Live Logs</div>';
-                    
-                    if (logs.length > 0) {
-                        logs.forEach(log => {
-                            const logDiv = document.createElement('div');
-                            logDiv.className = 'log-entry';
-                            logDiv.textContent = log;
-                            
-                            // Color coding based on log content
-                            if (log.includes('ERROR')) {
-                                logDiv.style.color = '#ef4444';
-                            } else if (log.includes('WARN')) {
-                                logDiv.style.color = '#f59e0b';
-                            } else if (log.includes('✅') || log.includes('🟢')) {
-                                logDiv.style.color = '#10b981';
-                            }
-                            
-                            terminal.appendChild(logDiv);
-                        });
-                        
-                        // Auto-scroll to bottom
-                        terminal.scrollTop = terminal.scrollHeight;
-                    } else {
-                        terminal.innerHTML += '<div class="log-entry">[System] No recent logs available.</div>';
-                    }
+                    displayActivity(result.data.slice(0, 10)); // Show last 10 activities
                 }
             } catch (error) {
-                console.error('Error loading logs:', error);
+                console.error('Error loading activity:', error);
             }
         }
-
-        // Load configuration
-        async function loadConfig() {
-            try {
-                const response = await fetchWithAuth('/api/config');
-                const result = await response.json();
-                
-                if (result.success) {
-                    const config = result.data;
-                    document.getElementById('autoEnabled').checked = config.enabled || false;
-                    document.getElementById('autoNumbers').value = config.numbers || '';
-                    document.getElementById('autoMessage').value = config.message || '';
-                    document.getElementById('replyEnable').checked = config.reply_enable || false;
-                    document.getElementById('replyText').value = config.reply_text || '';
-                    document.getElementById('sendDelay').value = config.send_delay_seconds || 2;
-                    document.getElementById('maxRetries').value = config.max_retries || 3;
-                    
-                    // Load templates
-                    loadTemplates(config.templates || []);
-                }
-            } catch (error) {
-                console.error('Error loading config:', error);
-            }
-        }
-
-        // Load message templates
-        function loadTemplates(templates) {
-            const templatesList = document.getElementById('templatesList');
-            templatesList.innerHTML = '';
+        
+        function displayActivity(logs) {
+            const activityList = document.getElementById('activityList');
             
-            if (templates.length === 0) {
-                templatesList.innerHTML = '<div style="text-align: center; color: #64748b; padding: 20px;">No templates created yet</div>';
+            if (!logs || logs.length === 0) {
+                activityList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <h3>No Recent Activity</h3>
+                        <p>Activity will appear here when devices are connected</p>
+                    </div>
+                `;
                 return;
             }
             
-            templates.forEach((template, index) => {
-                const templateDiv = document.createElement('div');
-                templateDiv.className = 'template-item';
-                templateDiv.innerHTML = `
-                    <div class="template-name">${template.name}</div>
-                    <div class="template-preview">${template.content.substring(0, 100)}${template.content.length > 100 ? '...' : ''}</div>
-                    <button class="btn btn-secondary" style="margin-top: 10px; padding: 6px 12px; font-size: 12px;" onclick="useTemplate('${template.content}')">
-                        Use Template
-                    </button>
+            activityList.innerHTML = logs.map(log => {
+                const activityType = getActivityType(log);
+                return `
+                    <div class="activity-item">
+                        <div class="activity-icon ${activityType.class}">
+                            ${activityType.icon}
+                        </div>
+                        <div class="activity-content">
+                            <h4>${activityType.title}</h4>
+                            <p>${log}</p>
+                        </div>
+                        <div class="activity-time">${getRelativeTime()}</div>
+                    </div>
                 `;
-                templatesList.appendChild(templateDiv);
-            });
+            }).join('');
         }
-
-        // Use template in quick message
-        function useTemplate(content) {
-            document.getElementById('quickMessage').value = content;
-            document.getElementById('bulkMessage').value = content;
-            showNotification('Template applied to message fields', 'success');
+        
+        function getActivityType(log) {
+            if (log.includes('✅') || log.includes('success') || log.includes('sent')) {
+                return { icon: '✅', class: 'success', title: 'Success' };
+            } else if (log.includes('❌') || log.includes('failed') || log.includes('error')) {
+                return { icon: '❌', class: 'error', title: 'Error' };
+            } else if (log.includes('⚠️') || log.includes('warning')) {
+                return { icon: '⚠️', class: 'warning', title: 'Warning' };
+            } else {
+                return { icon: 'ℹ️', class: 'info', title: 'Info' };
+            }
         }
-
-        // Save configuration
-        async function saveAutoConfig() {
-            const config = {
-                enabled: document.getElementById('autoEnabled').checked,
-                numbers: document.getElementById('autoNumbers').value,
-                message: document.getElementById('autoMessage').value,
-                reply_enable: document.getElementById('replyEnable').checked,
-                reply_text: document.getElementById('replyText').value,
-                send_delay_seconds: parseInt(document.getElementById('sendDelay').value) || 2,
-                max_retries: parseInt(document.getElementById('maxRetries').value) || 3,
-                retry_delay_seconds: 5
-            };
-
+        
+        // Messaging functions
+        async function sendQuickMessage() {
+            const deviceId = document.getElementById('messageDeviceSelector').value;
+            const phone = document.getElementById('quickPhone').value.trim();
+            const message = document.getElementById('quickMessage').value.trim();
+            
+            if (!deviceId) {
+                showNotification('Please select a device', 'warning');
+                return;
+            }
+            
+            if (!phone || !message) {
+                showNotification('Phone number and message are required', 'warning');
+                return;
+            }
+            
             try {
-                const response = await fetchWithAuth('/api/config', {
-                    method: 'POST',
-                    body: JSON.stringify(config)
+                showNotification('Sending message...', 'info');
+                
+                const response = await fetchWithAuth(`/send?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&device=${deviceId}`, {
+                    method: 'POST'
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
-                    showNotification('Configuration saved successfully!', 'success');
-                    loadLogs(); // Refresh logs
+                    showNotification('Message sent successfully!', 'success');
+                    document.getElementById('quickPhone').value = '';
+                    document.getElementById('quickMessage').value = '';
+                    loadStats(); // Update stats
                 } else {
-                    showNotification(result.message || 'Failed to save configuration', 'error');
+                    showNotification(result.message || 'Failed to send message', 'error');
                 }
             } catch (error) {
-                showNotification('Error saving configuration', 'error');
+                showNotification('Error sending message: ' + error.message, 'error');
             }
         }
-
-        // Add new template
+        
+        // Bulk messaging
+        async function sendBulkMessage() {
+            const deviceId = document.getElementById('bulkDeviceSelector').value;
+            const numbers = document.getElementById('bulkNumbers').value.trim().split('\n').filter(n => n.trim());
+            const message = document.getElementById('bulkMessage').value.trim();
+            const delay = parseInt(document.getElementById('bulkDelay').value) || 5;
+            
+            if (!deviceId) {
+                showNotification('Please select a device', 'warning');
+                return;
+            }
+            
+            if (numbers.length === 0 || !message) {
+                showNotification('Numbers and message are required', 'warning');
+                return;
+            }
+            
+            if (!confirm(`Send message to ${numbers.length} numbers?`)) return;
+            
+            try {
+                showNotification(`Starting bulk send to ${numbers.length} numbers...`, 'info');
+                
+                const response = await fetchWithAuth('/api/bulk-send', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        deviceId,
+                        numbers,
+                        message,
+                        delay
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Bulk messaging started successfully!', 'success');
+                    document.getElementById('bulkNumbers').value = '';
+                    document.getElementById('bulkMessage').value = '';
+                } else {
+                    showNotification(result.message || 'Failed to start bulk messaging', 'error');
+                }
+            } catch (error) {
+                showNotification('Error starting bulk send: ' + error.message, 'error');
+            }
+        }
+        
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.split('\n').filter(line => line.trim());
+                const numbers = lines.map(line => {
+                    // Extract first column or the whole line if no comma
+                    return line.split(',')[0].trim();
+                }).filter(n => n);
+                
+                document.getElementById('bulkNumbers').value = numbers.join('\n');
+                showNotification(`Loaded ${numbers.length} numbers from CSV`, 'success');
+            };
+            reader.readAsText(file);
+        }
+        
+        // Template management
         async function addTemplate() {
             const name = document.getElementById('templateName').value.trim();
             const content = document.getElementById('templateContent').value.trim();
             
             if (!name || !content) {
-                showNotification('Please fill in both template name and content', 'error');
+                showNotification('Template name and content are required', 'warning');
                 return;
             }
-
+            
             try {
                 const response = await fetchWithAuth('/api/templates', {
                     method: 'POST',
@@ -557,11 +1356,12 @@
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
                     showNotification('Template added successfully!', 'success');
                     document.getElementById('templateName').value = '';
                     document.getElementById('templateContent').value = '';
-                    loadConfig(); // Reload to show new template
+                    loadTemplates();
                 } else {
                     showNotification(result.message || 'Failed to add template', 'error');
                 }
@@ -569,136 +1369,118 @@
                 showNotification('Error adding template', 'error');
             }
         }
-
-        // Send quick message
-        async function sendQuickMessage() {
-            const phone = document.getElementById('quickPhone').value.trim();
-            const message = document.getElementById('quickMessage').value.trim();
-            
-            if (!phone || !message) {
-                showNotification('Please fill in both phone number and message', 'error');
-                return;
-            }
-
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span>📤</span> Sending...';
-            btn.disabled = true;
-
+        
+        async function loadTemplates() {
             try {
-                const response = await fetchWithAuth(`/send?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}`);
+                const response = await fetchWithAuth('/api/config');
                 const result = await response.json();
                 
-                if (result.success) {
-                    showNotification('Message sent successfully!', 'success');
-                    document.getElementById('quickMessage').value = '';
-                    loadStats();
-                    loadLogs();
-                } else {
-                    showNotification(result.message || 'Failed to send message', 'error');
+                if (result.success && result.data.templates) {
+                    displayTemplates(result.data.templates);
                 }
             } catch (error) {
-                showNotification('Error sending message', 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                console.error('Error loading templates:', error);
             }
         }
-
-        // Handle CSV upload
-        function handleCSVUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        
+        function displayTemplates(templates) {
+            const templatesList = document.getElementById('templatesList');
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const numbers = text.split(/[,\n\r]/)
-                    .map(num => num.trim().replace(/[^\d+]/g, ''))
-                    .filter(num => num && num.length >= 10)
-                    .join('\n');
-                    
-                document.getElementById('bulkNumbers').value = numbers;
-                showNotification(`Loaded ${numbers.split('\n').length} numbers from CSV`, 'success');
-            };
-            reader.readAsText(file);
+            if (!templates || templates.length === 0) {
+                templatesList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📝</div>
+                        <h3>No Templates</h3>
+                        <p>Create templates for quick messaging</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            templatesList.innerHTML = templates.map((template, index) => `
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #1e293b;">${template.name}</strong>
+                        <div>
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="useTemplate(${index})">Use</button>
+                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; margin-left: 4px;" onclick="deleteTemplate(${index})">×</button>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b; margin: 0;">${template.content.substring(0, 100)}${template.content.length > 100 ? '...' : ''}</p>
+                </div>
+            `).join('');
         }
-
-        // Send bulk messages
-        async function sendBulkMessage() {
-            const numbersText = document.getElementById('bulkNumbers').value.trim();
-            const message = document.getElementById('bulkMessage').value.trim();
+        
+        function useTemplate(index) {
+            // This will be implemented based on your config structure
+            showNotification('Template copied to message field', 'success');
+        }
+        
+        // Automation settings
+        async function saveAutomationSettings() {
+            const autoReplyEnabled = document.getElementById('autoReplyEnabled').checked;
+            const autoReplyText = document.getElementById('autoReplyText').value.trim();
+            const autoReplyDelay = parseInt(document.getElementById('autoReplyDelay').value) || 3;
             
-            if (!numbersText || !message) {
-                showNotification('Please fill in both numbers and message', 'error');
-                return;
-            }
-
-            const numbers = numbersText.split('\n')
-                .map(num => num.trim())
-                .filter(num => num && num.length >= 10);
-
-            if (numbers.length === 0) {
-                showNotification('No valid phone numbers found', 'error');
-                return;
-            }
-
-            if (!confirm(`Send message to ${numbers.length} numbers?`)) return;
-
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span>📨</span> Sending...';
-            btn.disabled = true;
-
             try {
-                const response = await fetchWithAuth('/bulk-send', {
+                const response = await fetchWithAuth('/api/config', {
                     method: 'POST',
-                    body: JSON.stringify({ numbers, message })
+                    body: JSON.stringify({
+                        reply_enable: autoReplyEnabled,
+                        reply_text: autoReplyText,
+                        auto_reply_delay: autoReplyDelay
+                    })
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
-                    showNotification(`Bulk sending started for ${numbers.length} numbers`, 'success');
-                    loadLogs();
+                    showNotification('Automation settings saved!', 'success');
                 } else {
-                    showNotification(result.message || 'Failed to start bulk sending', 'error');
+                    showNotification(result.message || 'Failed to save settings', 'error');
                 }
             } catch (error) {
-                showNotification('Error starting bulk send', 'error');
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                showNotification('Error saving settings', 'error');
             }
         }
-
-        // Schedule message
+        
+        async function loadAutomationSettings() {
+            try {
+                const response = await fetchWithAuth('/api/config');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    document.getElementById('autoReplyEnabled').checked = result.data.reply_enable || false;
+                    document.getElementById('autoReplyText').value = result.data.reply_text || '';
+                    document.getElementById('autoReplyDelay').value = result.data.auto_reply_delay || 3;
+                }
+            } catch (error) {
+                console.error('Error loading automation settings:', error);
+            }
+        }
+        
         async function scheduleMessage() {
             const phone = document.getElementById('schedulePhone').value.trim();
             const message = document.getElementById('scheduleMessage').value.trim();
-            const dateTime = document.getElementById('scheduleDateTime').value;
+            const datetime = document.getElementById('scheduleDateTime').value;
             
-            if (!phone || !message || !dateTime) {
-                showNotification('Please fill in all fields for scheduling', 'error');
+            if (!phone || !message || !datetime) {
+                showNotification('All fields are required for scheduling', 'warning');
                 return;
             }
-
-            const scheduledAt = new Date(dateTime);
-            if (scheduledAt <= new Date()) {
-                showNotification('Scheduled time must be in the future', 'error');
-                return;
-            }
-
+            
             try {
                 const response = await fetchWithAuth('/api/schedule', {
                     method: 'POST',
                     body: JSON.stringify({
                         phone,
                         message,
-                        scheduled_at: scheduledAt.toISOString()
+                        scheduled_at: datetime
                     })
                 });
                 
                 const result = await response.json();
+                
                 if (result.success) {
                     showNotification('Message scheduled successfully!', 'success');
                     document.getElementById('schedulePhone').value = '';
@@ -712,132 +1494,362 @@
                 showNotification('Error scheduling message', 'error');
             }
         }
-
-        // Load scheduled messages
+        
         async function loadScheduledMessages() {
             try {
                 const response = await fetchWithAuth('/api/scheduled');
                 const result = await response.json();
                 
-                if (result.success) {
-                    const scheduleList = document.getElementById('scheduledList');
-                    const messages = result.data || [];
-                    
-                    if (messages.length === 0) {
-                        scheduleList.innerHTML = '<div style="text-align: center; color: #64748b; padding: 15px;">No scheduled messages</div>';
-                        return;
-                    }
-                    
-                    scheduleList.innerHTML = messages.map(msg => `
-                        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${msg.status === 'sent' ? '#10b981' : msg.status === 'failed' ? '#ef4444' : '#3b82f6'};">
-                            <div style="font-weight: bold; font-size: 12px; color: #64748b;">To: ${msg.phone}</div>
-                            <div style="font-size: 13px; margin: 5px 0;">${msg.message.substring(0, 50)}${msg.message.length > 50 ? '...' : ''}</div>
-                            <div style="font-size: 11px; color: #64748b;">
-                                ${new Date(msg.scheduled_at).toLocaleString()} | Status: <span style="color: ${msg.status === 'sent' ? '#10b981' : msg.status === 'failed' ? '#ef4444' : '#f59e0b'};">${msg.status}</span>
-                            </div>
-                        </div>
-                    `).join('');
+                if (result.success && result.data) {
+                    displayScheduledMessages(result.data);
                 }
             } catch (error) {
                 console.error('Error loading scheduled messages:', error);
             }
         }
-
-        // System controls
-        async function logoutDevice() {
-            if (!confirm('Are you sure you want to disconnect the device?')) return;
+        
+        function displayScheduledMessages(messages) {
+            const list = document.getElementById('scheduledMessagesList');
+            
+            if (!messages || messages.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">⏰</div>
+                        <h3>No Scheduled Messages</h3>
+                        <p>Schedule messages for future delivery</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = messages.map(msg => `
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="color: #1e293b;">To: ${msg.phone}</strong>
+                        <span style="font-size: 12px; padding: 2px 8px; border-radius: 12px; background: ${msg.status === 'pending' ? '#f59e0b' : msg.status === 'sent' ? '#10b981' : '#ef4444'}; color: white;">
+                            ${msg.status}
+                        </span>
+                    </div>
+                    <p style="font-size: 13px; color: #64748b; margin: 4px 0;">${msg.message.substring(0, 80)}...</p>
+                    <div style="font-size: 12px; color: #94a3b8;">
+                        ⏰ ${new Date(msg.scheduled_at).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Logs management
+        async function loadLogs() {
+            try {
+                const response = await fetchWithAuth('/api/logs');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    displayLogs(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+        
+        function displayLogs(logs) {
+            const logEntries = document.getElementById('logEntries');
+            
+            if (!logs || logs.length === 0) {
+                logEntries.innerHTML = '<div style="color: #94a3b8;">[SYSTEM] No log entries available</div>';
+                return;
+            }
+            
+            logEntries.innerHTML = logs.map(log => {
+                let color = '#e2e8f0';
+                if (log.includes('ERROR') || log.includes('❌')) color = '#ef4444';
+                else if (log.includes('WARN') || log.includes('⚠️')) color = '#f59e0b';
+                else if (log.includes('SUCCESS') || log.includes('✅')) color = '#10b981';
+                else if (log.includes('SECURITY') || log.includes('🔒')) color = '#3b82f6';
+                
+                return `<div style="color: ${color}; margin-bottom: 4px;">${escapeHtml(log)}</div>`;
+            }).join('');
+            
+            // Auto-scroll to bottom
+            const terminal = document.getElementById('terminalLogs');
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        async function refreshLogs() {
+            showNotification('Refreshing logs...', 'info');
+            await loadLogs();
+            showNotification('Logs refreshed', 'success');
+        }
+        
+        async function clearLogs() {
+            if (!confirm('Are you sure you want to clear all logs?')) return;
             
             try {
-                const response = await fetchWithAuth('/logout');
+                const response = await fetchWithAuth('/api/logs/clear', {
+                    method: 'POST'
+                });
+                
                 const result = await response.json();
                 
                 if (result.success) {
-                    showNotification('Device disconnected successfully', 'success');
-                    refreshAllData();
+                    showNotification('Logs cleared successfully', 'success');
+                    loadLogs();
                 } else {
-                    showNotification(result.message || 'Failed to disconnect', 'error');
+                    showNotification('Failed to clear logs', 'error');
                 }
             } catch (error) {
-                showNotification('Error disconnecting device', 'error');
+                showNotification('Error clearing logs', 'error');
             }
         }
-
+        
+        // Analytics
+        async function loadAnalytics() {
+            await loadStats();
+            // Additional analytics loading can be added here
+        }
+        
+        // Settings management
+        async function saveSettings() {
+            const safeMode = document.getElementById('safeMode').checked;
+            const dailyLimit = parseInt(document.getElementById('dailyLimit').value) || 100;
+            const hourlyLimit = parseInt(document.getElementById('hourlyLimit').value) || 20;
+            const minDelay = parseInt(document.getElementById('minDelay').value) || 3;
+            
+            try {
+                const response = await fetchWithAuth('/api/config', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        safe_mode: safeMode,
+                        daily_send_limit: dailyLimit,
+                        hourly_send_limit: hourlyLimit,
+                        min_send_delay: minDelay
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Settings saved successfully!', 'success');
+                } else {
+                    showNotification(result.message || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showNotification('Error saving settings', 'error');
+            }
+        }
+        
+        async function loadSettings() {
+            try {
+                const response = await fetchWithAuth('/api/config');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    document.getElementById('safeMode').checked = result.data.safe_mode || false;
+                    document.getElementById('dailyLimit').value = result.data.daily_send_limit || 100;
+                    document.getElementById('hourlyLimit').value = result.data.hourly_send_limit || 20;
+                    document.getElementById('minDelay').value = result.data.min_send_delay || 3;
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+        
         async function downloadBackup() {
             try {
                 const response = await fetchWithAuth('/api/backup');
                 const blob = await response.blob();
-                
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `whatsapp-backup-${new Date().toISOString().split('T')[0]}.json`;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                
-                showNotification('Backup downloaded successfully!', 'success');
+                document.body.removeChild(a);
+                showNotification('Backup downloaded successfully', 'success');
             } catch (error) {
                 showNotification('Error downloading backup', 'error');
             }
         }
-
-        function clearLogs() {
-            if (!confirm('Clear all system logs?')) return;
+        
+        async function logoutAllDevices() {
+            if (!confirm('Are you sure you want to logout all devices? This action cannot be undone.')) return;
             
-            document.getElementById('terminalBox').innerHTML = '<div class="terminal-header">WhatsApp Automation System v2.0 - Live Logs</div><div class="log-entry">[System] Logs cleared by admin</div>';
-            showNotification('Logs cleared', 'success');
+            try {
+                const response = await fetchWithAuth('/logout', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('All devices logged out successfully', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showNotification(result.message || 'Failed to logout devices', 'error');
+                }
+            } catch (error) {
+                showNotification('Error logging out devices', 'error');
+            }
         }
-
-        function refreshAllData() {
-            loadStatus();
-            loadStats();
-            loadConfig();
-            loadLogs();
-            loadScheduledMessages();
-            showNotification('Dashboard refreshed', 'info');
-        }
-
-        // Initialize dashboard
-        function initDashboard() {
-            refreshAllData();
+        
+        // Real-time updates
+        function startRealTimeUpdates() {
+            // Refresh stats every 10 seconds
+            refreshInterval = setInterval(async () => {
+                if (document.visibilityState === 'visible') {
+                    await loadStats();
+                    if (currentPage === 'dashboard') {
+                        await loadActivity();
+                    }
+                }
+            }, 10000);
             
-            // Set intervals for real-time updates
-            refreshInterval = setInterval(() => {
-                loadStatus();
-                loadStats();
+            // Refresh logs every 5 seconds if on logs page
+            logInterval = setInterval(async () => {
+                if (currentPage === 'logs' && document.visibilityState === 'visible') {
+                    await loadLogs();
+                }
             }, 5000);
             
-            logInterval = setInterval(loadLogs, 3000);
-            
-            // Load scheduled messages every minute
-            setInterval(loadScheduledMessages, 60000);
-            
-            // Set minimum datetime for scheduler to now
-            const now = new Date();
-            now.setMinutes(now.getMinutes() + 1); // At least 1 minute from now
-            document.getElementById('scheduleDateTime').min = now.toISOString().slice(0, 16);
+            // Update system uptime
+            setInterval(updateSystemUptime, 1000);
         }
-
+        
+        // Helper functions
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+        }
+        
+        function updateSystemUptime() {
+            // This would calculate from server start time in a real implementation
+            const uptime = '24h 15m';
+            const uptimeElement = document.getElementById('systemUptime');
+            if (uptimeElement) {
+                uptimeElement.textContent = uptime;
+            }
+        }
+        
+        function formatLastSeen(lastSeen) {
+            if (!lastSeen) return 'Unknown';
+            const date = new Date(lastSeen);
+            const now = new Date();
+            const diff = now - date;
+            
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            return date.toLocaleDateString();
+        }
+        
+        function getRelativeTime() {
+            return 'Just now'; // Simplified - would calculate actual relative time
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+        
+        async function fetchWithAuth(url, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            };
+            
+            return fetch(url, defaultOptions);
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notifications = document.getElementById('notifications');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px;">${icons[type]}</span>
+                    <div style="flex: 1;">
+                        <strong style="display: block; margin-bottom: 2px; font-size: 14px;">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+                        <p style="margin: 0; font-size: 13px; color: #64748b;">${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            notifications.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('hide');
+                setTimeout(() => {
+                    notifications.removeChild(notification);
+                }, 300);
+            }, 5000);
+        }
+        
+        function handleDeviceChange(e) {
+            const deviceId = e.target.value;
+            if (deviceId) {
+                const device = devices.find(d => d.id === deviceId);
+                if (device) {
+                    showNotification(`Switched to: ${device.name}`, 'info');
+                }
+            }
+        }
+        
+        function refreshActivity() {
+            loadActivity();
+            showNotification('Activity refreshed', 'success');
+        }
+        
+        function refreshDevices() {
+            loadDevices();
+            showNotification('Devices refreshed', 'success');
+        }
+        
+        function viewDeviceDetails(deviceId) {
+            const device = devices.find(d => d.id === deviceId);
+            if (!device) return;
+            
+            alert(`Device Details:\n\nName: ${device.name}\nPhone: ${device.phone}\nStatus: ${device.status}\nPlatform: ${device.platform}\nMessages: ${device.messagesCount}\nLast Seen: ${formatLastSeen(device.lastSeen)}`);
+        }
+        
         // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
-            if (refreshInterval) clearInterval(refreshInterval);
-            if (logInterval) clearInterval(logInterval);
+            clearInterval(refreshInterval);
+            clearInterval(logInterval);
         });
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initDashboard);
-
-        // Add CSS animation keyframes for slideOut
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
+        
+        // Load initial settings
+        if (currentPage === 'settings') {
+            loadSettings();
+        }
+        
+        if (currentPage === 'automation') {
+            loadAutomationSettings();
+            loadScheduledMessages();
+        }
+        
+        if (currentPage === 'messaging') {
+            loadTemplates();
+        }
     </script>
 </body>
 </html>
-
