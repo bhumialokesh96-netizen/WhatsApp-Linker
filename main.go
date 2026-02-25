@@ -1,4 +1,3 @@
-main.go
 package main
 
 import (
@@ -210,4 +209,3 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Automation configuration saved successfully!"))
 	}
 }
-
