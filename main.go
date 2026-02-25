@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -25,16 +24,16 @@ import (
 )
 
 var (
-	client           *whatsmeow.Client
-	systemLogs       []string
-	logMu            sync.Mutex
-	config           AutoConfig
-	pairAttempts     = make(map[string]time.Time)
-	pairMu           sync.Mutex
+	client            *whatsmeow.Client
+	systemLogs        []string
+	logMu             sync.Mutex
+	config            AutoConfig
+	pairAttempts      = make(map[string]time.Time)
+	pairMu            sync.Mutex
 	scheduledMessages []ScheduledMessage
-	scheduleMu       sync.Mutex
-	messageStats     MessageStats
-	statsMu          sync.Mutex
+	scheduleMu        sync.Mutex
+	messageStats      MessageStats
+	statsMu           sync.Mutex
 )
 
 // Enhanced configuration structure
@@ -80,17 +79,17 @@ type APIResponse struct {
 func addLog(msg string, level ...string) {
 	logMu.Lock()
 	defer logMu.Unlock()
-	
+
 	logLevel := "INFO"
 	if len(level) > 0 {
 		logLevel = level[0]
 	}
-	
+
 	timestamp := time.Now().Format("15:04:05")
 	logEntry := fmt.Sprintf("[%s] [%s] %s", timestamp, logLevel, msg)
 	systemLogs = append([]string{logEntry}, systemLogs...)
-	
-	if len(systemLogs) > 100 { // Increased log retention
+
+	if len(systemLogs) > 100 {
 		systemLogs = systemLogs[:100]
 	}
 	fmt.Println(logEntry)
@@ -100,7 +99,6 @@ func addLog(msg string, level ...string) {
 func loadConfig() {
 	data, err := os.ReadFile("config.json")
 	if err != nil {
-		// Set defaults
 		config = AutoConfig{
 			Enabled:     false,
 			Numbers:     "",
@@ -115,15 +113,20 @@ func loadConfig() {
 		saveConfig()
 		return
 	}
-	
+
 	if err := json.Unmarshal(data, &config); err != nil {
 		addLog("Error loading config: "+err.Error(), "ERROR")
 	}
-	
-	// Set defaults for new fields
-	if config.MaxRetries == 0 { config.MaxRetries = 3 }
-	if config.RetryDelay == 0 { config.RetryDelay = 5 }
-	if config.SendDelay == 0 { config.SendDelay = 2 }
+
+	if config.MaxRetries == 0 {
+		config.MaxRetries = 3
+	}
+	if config.RetryDelay == 0 {
+		config.RetryDelay = 5
+	}
+	if config.SendDelay == 0 {
+		config.SendDelay = 2
+	}
 }
 
 func saveConfig() {
@@ -139,10 +142,14 @@ func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 		user, pass, ok := r.BasicAuth()
 		adminUser := os.Getenv("ADMIN_USER")
 		adminPass := os.Getenv("ADMIN_PASS")
-		
-		if adminUser == "" { adminUser = "admin" }
-		if adminPass == "" { adminPass = "admin123" }
-		
+
+		if adminUser == "" {
+			adminUser = "admin"
+		}
+		if adminPass == "" {
+			adminPass = "admin123"
+		}
+
 		if !ok || user != adminUser || pass != adminPass {
 			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted Area"`)
 			http.Error(w, "Unauthorized Access", http.StatusUnauthorized)
@@ -156,7 +163,7 @@ func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 func rateLimitPairing(phone string) bool {
 	pairMu.Lock()
 	defer pairMu.Unlock()
-	
+
 	if lastAttempt, exists := pairAttempts[phone]; exists {
 		if time.Since(lastAttempt) < 30*time.Second {
 			return false
@@ -178,18 +185,19 @@ func eventHandler(evt interface{}) {
 	case *events.Message:
 		if !v.Info.IsFromMe {
 			sender := "Unknown"
-			if v.Info.Sender != nil {
+			// Fixed: Check if sender is not empty instead of nil comparison
+			if v.Info.Sender.User != "" {
 				sender = v.Info.Sender.User
 			}
-			
+
 			// Update stats
 			statsMu.Lock()
 			messageStats.TotalReceived++
 			messageStats.LastActivity = time.Now()
 			statsMu.Unlock()
-			
+
 			addLog(fmt.Sprintf("📩 Message received from: %s", sender))
-			
+
 			// Enhanced auto-reply with retry mechanism
 			if !v.Info.IsGroup && config.ReplyEnable && config.ReplyText != "" {
 				go sendAutoReply(v.Info.Sender, config.ReplyText, sender)
@@ -214,14 +222,14 @@ func sendAutoReply(sender types.JID, replyText, senderUser string) {
 			addLog(fmt.Sprintf("Auto-reply panic: %v", r), "ERROR")
 		}
 	}()
-	
+
 	maxRetries := config.MaxRetries
 	retryDelay := time.Duration(config.RetryDelay) * time.Second
-	
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		msg := &waProto.Message{Conversation: proto.String(replyText)}
-		
+
 		if _, err := client.SendMessage(ctx, sender, msg); err != nil {
 			cancel()
 			addLog(fmt.Sprintf("❌ Auto-reply attempt %d failed to %s: %v", attempt, senderUser, err), "WARN")
@@ -229,14 +237,14 @@ func sendAutoReply(sender types.JID, replyText, senderUser string) {
 				time.Sleep(retryDelay)
 				continue
 			}
-			
+
 			statsMu.Lock()
 			messageStats.TotalFailed++
 			statsMu.Unlock()
 		} else {
 			cancel()
 			addLog("🤖 Auto-reply sent to: " + senderUser)
-			
+
 			statsMu.Lock()
 			messageStats.TotalSent++
 			messageStats.LastActivity = time.Now()
@@ -265,32 +273,31 @@ func startAutoSend() {
 
 	for _, num := range rawNumbers {
 		num = strings.TrimSpace(num)
-		if num == "" { continue }
-		
-		// Clean and format number
+		if num == "" {
+			continue
+		}
+
 		num = strings.ReplaceAll(num, "+", "")
 		num = strings.ReplaceAll(num, "-", "")
 		num = strings.ReplaceAll(num, " ", "")
-		
-		// Add country code if missing
+
 		if len(num) == 10 && !strings.HasPrefix(num, "91") {
 			num = "91" + num
 		}
-		
+
 		totalNumbers++
 		addLog(fmt.Sprintf("📤 Sending to %s (%d/%d)", num, totalNumbers, len(rawNumbers)))
-		
+
 		if success := sendMessageWithRetry(num, config.Message); success {
 			successCount++
 		} else {
 			failCount++
 		}
-		
-		// Configurable delay between messages
+
 		time.Sleep(time.Duration(config.SendDelay) * time.Second)
 	}
 
-	addLog(fmt.Sprintf("✅ Auto-Send Complete! Total: %d, Success: %d, Failed: %d", 
+	addLog(fmt.Sprintf("✅ Auto-Send Complete! Total: %d, Success: %d, Failed: %d",
 		totalNumbers, successCount, failCount))
 }
 
@@ -303,16 +310,16 @@ func sendMessageWithRetry(phone, message string) bool {
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		
+
 		if _, err := client.SendMessage(ctx, targetJID, msg); err != nil {
 			cancel()
 			addLog(fmt.Sprintf("❌ Send attempt %d to %s failed: %v", attempt, phone, err), "WARN")
-			
+
 			if attempt < maxRetries {
 				time.Sleep(retryDelay)
 				continue
 			}
-			
+
 			statsMu.Lock()
 			messageStats.TotalFailed++
 			statsMu.Unlock()
@@ -320,7 +327,7 @@ func sendMessageWithRetry(phone, message string) bool {
 		} else {
 			cancel()
 			addLog("✉️ Message sent successfully to: " + phone)
-			
+
 			statsMu.Lock()
 			messageStats.TotalSent++
 			messageStats.LastActivity = time.Now()
@@ -342,7 +349,6 @@ func main() {
 	loadConfig()
 	addLog("🚀 Enhanced WhatsApp Automation Server Started!")
 
-	// Initialize database
 	dbLog := waLog.Stdout("Database", "WARN", true)
 	container, err := sqlstore.New(context.Background(), "sqlite3", "file:session.db?_foreign_keys=on", dbLog)
 	if err != nil {
@@ -358,7 +364,6 @@ func main() {
 	client = whatsmeow.NewClient(deviceStore, clientLog)
 	client.AddEventHandler(eventHandler)
 
-	// Start scheduler for scheduled messages
 	go messageScheduler()
 
 	// Public routes
@@ -381,8 +386,10 @@ func main() {
 	http.HandleFunc("/bulk-send", basicAuth(handleBulkSend))
 
 	port := os.Getenv("PORT")
-	if port == "" { port = "8080" }
-	
+	if port == "" {
+		port = "8080"
+	}
+
 	addLog(fmt.Sprintf("🌐 Server running on port %s", port))
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
@@ -403,7 +410,6 @@ func handlePair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rate limiting
 	if !rateLimitPairing(phone) {
 		http.Error(w, "Too many pairing attempts. Please wait 30 seconds.", http.StatusTooManyRequests)
 		return
@@ -443,8 +449,8 @@ func handleApiInfo(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
 			Data: map[string]interface{}{
-				"status": "Connected",
-				"jid":    client.Store.ID.User,
+				"status":    "Connected",
+				"jid":       client.Store.ID.User,
 				"connected": client.IsConnected(),
 			},
 		})
@@ -452,8 +458,8 @@ func handleApiInfo(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
 			Data: map[string]interface{}{
-				"status": "Disconnected",
-				"jid":    "None",
+				"status":    "Disconnected",
+				"jid":       "None",
 				"connected": false,
 			},
 		})
@@ -499,7 +505,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 func handleSend(w http.ResponseWriter, r *http.Request) {
 	targetPhone := r.URL.Query().Get("phone")
 	msgText := r.URL.Query().Get("text")
-	
+
 	if targetPhone == "" || msgText == "" {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: false,
@@ -508,17 +514,16 @@ func handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Clean phone number
 	targetPhone = strings.ReplaceAll(targetPhone, "+", "")
 	targetPhone = strings.ReplaceAll(targetPhone, " ", "")
 	targetPhone = strings.ReplaceAll(targetPhone, "-", "")
-	
+
 	if len(targetPhone) == 10 && !strings.HasPrefix(targetPhone, "91") {
 		targetPhone = "91" + targetPhone
 	}
 
 	success := sendMessageWithRetry(targetPhone, msgText)
-	
+
 	json.NewEncoder(w).Encode(APIResponse{
 		Success: success,
 		Message: fmt.Sprintf("Message %s", map[bool]string{true: "sent successfully", false: "failed to send"}[success]),
@@ -530,7 +535,7 @@ func handleBulkSend(w http.ResponseWriter, r *http.Request) {
 		Numbers []string `json:"numbers"`
 		Message string   `json:"message"`
 	}
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: false,
@@ -542,20 +547,22 @@ func handleBulkSend(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		successCount := 0
 		failCount := 0
-		
+
 		for _, phone := range req.Numbers {
 			phone = strings.TrimSpace(phone)
-			if phone == "" { continue }
-			
+			if phone == "" {
+				continue
+			}
+
 			if sendMessageWithRetry(phone, req.Message) {
 				successCount++
 			} else {
 				failCount++
 			}
-			
+
 			time.Sleep(time.Duration(config.SendDelay) * time.Second)
 		}
-		
+
 		addLog(fmt.Sprintf("📊 Bulk send completed: %d success, %d failed", successCount, failCount))
 	}()
 
@@ -567,7 +574,7 @@ func handleBulkSend(w http.ResponseWriter, r *http.Request) {
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	if r.Method == http.MethodGet {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
@@ -582,11 +589,11 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		
+
 		config = newConfig
 		saveConfig()
 		addLog("⚙️ Configuration updated by admin")
-		
+
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
 			Message: "Configuration saved successfully",
@@ -596,7 +603,7 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 
 func handleTemplates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	if r.Method == http.MethodGet {
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
@@ -611,11 +618,11 @@ func handleTemplates(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		
+
 		config.Templates = append(config.Templates, template)
 		saveConfig()
 		addLog("📝 New message template added: " + template.Name)
-		
+
 		json.NewEncoder(w).Encode(APIResponse{
 			Success: true,
 			Message: "Template added successfully",
@@ -625,7 +632,7 @@ func handleTemplates(w http.ResponseWriter, r *http.Request) {
 
 func handleScheduleMessage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var msg ScheduledMessage
 	if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
 		json.NewEncoder(w).Encode(APIResponse{
@@ -634,16 +641,16 @@ func handleScheduleMessage(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+
 	msg.ID = generateID()
 	msg.Status = "pending"
-	
+
 	scheduleMu.Lock()
 	scheduledMessages = append(scheduledMessages, msg)
 	scheduleMu.Unlock()
-	
+
 	addLog(fmt.Sprintf("⏰ Message scheduled for %s to %s", msg.ScheduledAt.Format("2006-01-02 15:04"), msg.Phone))
-	
+
 	json.NewEncoder(w).Encode(APIResponse{
 		Success: true,
 		Message: "Message scheduled successfully",
@@ -663,16 +670,16 @@ func handleGetScheduled(w http.ResponseWriter, r *http.Request) {
 
 func handleBackup(w http.ResponseWriter, r *http.Request) {
 	data, _ := json.MarshalIndent(map[string]interface{}{
-		"config":            config,
+		"config":             config,
 		"scheduled_messages": scheduledMessages,
-		"stats":             messageStats,
-		"backup_date":       time.Now(),
+		"stats":              messageStats,
+		"backup_date":        time.Now(),
 	}, "", "  ")
-	
+
 	w.Header().Set("Content-Disposition", "attachment; filename=whatsapp-backup.json")
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
-	
+
 	addLog("💾 Configuration backup downloaded by admin")
 }
 
@@ -680,16 +687,15 @@ func handleBackup(w http.ResponseWriter, r *http.Request) {
 func messageScheduler() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		scheduleMu.Lock()
 		now := time.Now()
-		
+
 		for i := len(scheduledMessages) - 1; i >= 0; i-- {
 			msg := scheduledMessages[i]
-			
+
 			if msg.Status == "pending" && now.After(msg.ScheduledAt) {
-				// Send the message
 				if sendMessageWithRetry(msg.Phone, msg.Message) {
 					scheduledMessages[i].Status = "sent"
 					addLog(fmt.Sprintf("⏰ Scheduled message sent to %s", msg.Phone))
@@ -698,8 +704,7 @@ func messageScheduler() {
 					addLog(fmt.Sprintf("❌ Scheduled message failed to %s", msg.Phone), "ERROR")
 				}
 			}
-			
-			// Remove old messages (older than 24 hours)
+
 			if now.Sub(msg.ScheduledAt) > 24*time.Hour {
 				scheduledMessages = append(scheduledMessages[:i], scheduledMessages[i+1:]...)
 			}
