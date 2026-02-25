@@ -3,101 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
+    <title>Enterprise Admin Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f6f9; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2, h3 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #333; }
-        .status-box { background: #eef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .automation-box { background: #e8f9f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #25D366; }
-        .badge { font-weight: bold; padding: 5px 10px; border-radius: 5px; color: white; }
-        .badge.connected { background: #28a745; }
-        .badge.disconnected { background: #dc3545; }
-        input[type="text"], textarea { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; border-radius: 5px; border: 1px solid #ccc; font-family: inherit;}
-        button { width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; border: none; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-success { background: #25D366; color: white; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 0; margin: 0; color: #333; }
+        .navbar { background: #1e293b; padding: 15px 20px; color: white; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .navbar h2 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 768px) { .container { grid-template-columns: 1fr; } }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px;}
+        
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; color: white; }
+        .status-badge.connected { background: #10b981; }
+        .status-badge.disconnected { background: #ef4444; }
+        
+        label { font-weight: 600; font-size: 14px; margin-bottom: 5px; display: block; color: #475569; }
+        input[type="text"], textarea { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #cbd5e1; box-sizing: border-box; font-family: inherit; transition: border 0.3s; }
+        input[type="text"]:focus, textarea:focus { border-color: #3b82f6; outline: none; }
+        
+        .checkbox-wrapper { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .checkbox-wrapper input { width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-wrapper label { margin: 0; cursor: pointer; font-size: 15px; color: #0f172a;}
+
+        button { padding: 12px 20px; font-size: 15px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; width: 100%; transition: background 0.2s; color: white;}
+        .btn-primary { background: #3b82f6; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #fee2e2; color: #ef4444; }
+        .btn-danger:hover { background: #fca5a5; }
+
+        /* Live Terminal Styles */
+        .terminal { background: #0f172a; color: #10b981; padding: 15px; border-radius: 8px; height: 250px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 13px; line-height: 1.5; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); }
+        .terminal div { border-bottom: 1px solid #1e293b; padding: 4px 0; }
+        .terminal div:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
-    <script>
-        if (prompt("Enter Admin Password:") !== "admin123") {
-            document.body.innerHTML = "<h2 style='text-align:center; color:red;'>Access Denied</h2>";
-            throw new Error("Wrong Password");
-        }
-    </script>
+
+    <div class="navbar">
+        <h2>🛡️ Enterprise Control Center</h2>
+        <span id="statusBadge" class="status-badge disconnected">Checking...</span>
+    </div>
 
     <div class="container">
-        <h2>🛠 Admin Dashboard</h2>
-        
-        <div class="status-box">
-            <p><strong>System Status:</strong> <span id="statusBadge" class="badge disconnected">Checking...</span></p>
-            <p><strong>Linked Number:</strong> <span id="jidText">N/A</span></p>
-            <button class="btn-danger" onclick="logoutDevice()">Disconnect Device</button>
+        <div class="card" style="grid-column: 1 / -1; padding: 20px;">
+            <div class="card-header">📡 Live System Logs & Incoming Messages</div>
+            <div class="terminal" id="terminalBox">
+                <div>[System] Loading logs...</div>
+            </div>
         </div>
 
-        <div class="automation-box">
-            <h3 style="border-bottom: 1px solid #bce6cc; color: #128C7E;">🚀 Auto-Send Automation</h3>
-            <p style="font-size: 14px; color: #555;">These messages will be automatically sent with a 2-second delay right after a user links their device.</p>
-            
-            <label style="font-weight: bold; cursor: pointer;">
-                <input type="checkbox" id="autoEnabled" style="width: 18px; height: 18px; vertical-align: middle;"> Enable Auto-Send System
-            </label>
-            <br><br>
-            
-            <strong>Target Phone Numbers:</strong>
-            <textarea id="autoNumbers" placeholder="Enter numbers here...&#10;919876543210&#10;918888888888&#10;(You can use comma or enter in new line)" rows="3"></textarea>
-            
-            <strong>Message Content:</strong>
-            <textarea id="autoMessage" placeholder="Hello! This is an automated system message..." rows="4"></textarea>
-            
-            <button class="btn-success" onclick="saveAutoConfig()">💾 Save Automation Settings</button>
+        <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-header">📱 Connection Manager</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <p style="font-size: 16px; margin: 0;">Currently Linked Number: <strong id="jidText" style="color: #3b82f6;">N/A</strong></p>
+                <button class="btn-danger" style="width: auto; margin: 0;" onclick="logoutDevice()">Disconnect Device</button>
+            </div>
         </div>
 
-        <h3>Manual Test Sender</h3>
-        <input type="text" id="targetPhone" placeholder="Target Phone (e.g. 919876543210)">
-        <input type="text" id="msgText" placeholder="Message content...">
-        <button class="btn-primary" onclick="sendMessage()">Send Single Message</button>
+        <div class="card">
+            <div class="card-header">🚀 Setup Auto-Sender</div>
+            <p style="font-size: 13px; color: #64748b;">Sends messages 5 seconds after a user successfully links a device.</p>
+            
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="autoEnabled">
+                <label for="autoEnabled">Enable Link Automation</label>
+            </div>
+            
+            <label>Target Phone Numbers</label>
+            <textarea id="autoNumbers" placeholder="919876543210&#10;918888888888" rows="3"></textarea>
+            
+            <label>Message Content</label>
+            <textarea id="autoMessage" placeholder="Welcome to the system..." rows="2"></textarea>
+            
+            <button class="btn-success" onclick="saveAutoConfig()">💾 Save Sender Config</button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">🤖 Chatbot Auto-Reply</div>
+            <p style="font-size: 13px; color: #64748b;">Automatically replies to incoming messages.</p>
+            
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="replyEnable">
+                <label for="replyEnable">Enable Chatbot Reply</label>
+            </div>
+            
+            <label>Auto-Reply Message Text</label>
+            <textarea id="replyText" placeholder="Hi! I am currently away. This is an automated reply..." rows="6"></textarea>
+            
+            <button class="btn-success" onclick="saveAutoConfig()">💾 Save Chatbot Config</button>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <div class="card-header">✉️ Quick Message Sender</div>
+            <div style="display: flex; gap: 15px;">
+                <input type="text" id="targetPhone" placeholder="Target Phone (e.g. 919876543210)" style="flex: 1; margin-bottom: 0;">
+                <input type="text" id="msgText" placeholder="Type your message here..." style="flex: 2; margin-bottom: 0;">
+                <button class="btn-primary" style="flex: 1;" onclick="sendMessage()">Send Now ➔</button>
+            </div>
+        </div>
     </div>
 
     <script>
+        async function fetchWithAuth(url, options = {}) {
+            // Browser apne aap Basic Auth handle karega
+            return await fetch(url, options);
+        }
+
         async function loadStatus() {
-            const res = await fetch('/api/info');
-            const data = await res.json();
-            const badge = document.getElementById('statusBadge');
-            badge.innerText = data.status;
-            badge.className = data.status === "Connected" ? "badge connected" : "badge disconnected";
-            document.getElementById('jidText').innerText = data.jid;
+            try {
+                const res = await fetchWithAuth('/api/info');
+                const data = await res.json();
+                const badge = document.getElementById('statusBadge');
+                badge.innerText = data.status;
+                badge.className = data.status === "Connected" ? "status-badge connected" : "status-badge disconnected";
+                document.getElementById('jidText').innerText = data.jid;
+            } catch(e){}
+        }
+
+        async function loadLogs() {
+            try {
+                const res = await fetchWithAuth('/api/logs');
+                const logs = await res.json();
+                const terminal = document.getElementById('terminalBox');
+                terminal.innerHTML = '';
+                if(logs && logs.length > 0) {
+                    logs.forEach(log => {
+                        let div = document.createElement('div');
+                        div.innerText = log;
+                        terminal.appendChild(div);
+                    });
+                } else {
+                    terminal.innerHTML = '<div>[System] No recent logs.</div>';
+                }
+            } catch(e){}
         }
 
         async function loadAutoConfig() {
-            const res = await fetch('/api/config');
-            const data = await res.json();
-            document.getElementById('autoEnabled').checked = data.enabled;
-            document.getElementById('autoNumbers').value = data.numbers;
-            document.getElementById('autoMessage').value = data.message;
+            try {
+                const res = await fetchWithAuth('/api/config');
+                const data = await res.json();
+                document.getElementById('autoEnabled').checked = data.enabled;
+                document.getElementById('autoNumbers').value = data.numbers;
+                document.getElementById('autoMessage').value = data.message;
+                document.getElementById('replyEnable').checked = data.reply_enable;
+                document.getElementById('replyText').value = data.reply_text;
+            } catch(e){}
         }
 
         async function saveAutoConfig() {
             const payload = {
                 enabled: document.getElementById('autoEnabled').checked,
                 numbers: document.getElementById('autoNumbers').value,
-                message: document.getElementById('autoMessage').value
+                message: document.getElementById('autoMessage').value,
+                reply_enable: document.getElementById('replyEnable').checked,
+                reply_text: document.getElementById('replyText').value
             };
-            const res = await fetch('/api/config', {
+            const res = await fetchWithAuth('/api/config', {
                 method: 'POST',
                 body: JSON.stringify(payload),
                 headers: { 'Content-Type': 'application/json' }
             });
             alert(await res.text());
+            loadLogs(); // Refresh logs to show settings saved
         }
 
         async function logoutDevice() {
-            if(!confirm("Are you sure you want to log out the connected WhatsApp?")) return;
-            await fetch('/logout');
-            alert("Device Logged Out!");
+            if(!confirm("Are you sure you want to disconnect?")) return;
+            await fetchWithAuth('/logout');
             loadStatus();
+            loadLogs();
         }
 
         async function sendMessage() {
@@ -105,14 +182,25 @@
             const text = document.getElementById('msgText').value;
             if(!phone || !text) return alert("Fill both fields");
 
-            const res = await fetch(`/send?phone=${phone}&text=${text}`);
+            const btn = event.target;
+            btn.innerText = "Sending...";
+            
+            const res = await fetchWithAuth(`/send?phone=${phone}&text=${text}`);
             const result = await res.text();
             alert(result);
+            
+            btn.innerText = "Send Now ➔";
+            loadLogs();
         }
 
+        // Initialize and Set Intervals
         loadStatus();
         loadAutoConfig();
+        loadLogs();
+        
         setInterval(loadStatus, 5000);
+        setInterval(loadLogs, 3000); // Har 3 second me logs refresh honge
     </script>
 </body>
 </html>
+
