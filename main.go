@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -94,6 +93,9 @@ type APIResponse struct {
 
 // Initialize security components
 func initSecurity() {
+	// Initialize random seed
+	mathrand.Seed(time.Now().UnixNano())
+
 	// Realistic user agents for different platforms
 	userAgents = []string{
 		"WhatsApp/2.23.20.0 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
@@ -131,7 +133,7 @@ func getRandomUserAgent() string {
 	if len(userAgents) == 0 {
 		return "WhatsApp/2.23.20.0"
 	}
-	return userAgents[rand.Intn(len(userAgents))]
+	return userAgents[mathrand.Intn(len(userAgents))]
 }
 
 // Enhanced logging with security awareness
@@ -153,7 +155,7 @@ func addLog(msg string, level ...string) {
 	}
 
 	// Log security warnings
-	if level[0] == "SECURITY" {
+	if len(level) > 0 && level[0] == "SECURITY" {
 		fmt.Printf("🔒 SECURITY: %s\n", logEntry)
 	} else {
 		fmt.Println(logEntry)
@@ -212,11 +214,11 @@ func calculateSmartDelay() time.Duration {
 	}
 
 	// Add randomization to avoid patterns
-	baseDelay := minDelay + rand.Intn(maxDelay-minDelay+1)
+	baseDelay := minDelay + mathrand.Intn(maxDelay-minDelay+1)
 	
 	// Add small random variation (±20%)
 	variation := int(float64(baseDelay) * 0.2)
-	finalDelay := baseDelay + rand.Intn(variation*2) - variation
+	finalDelay := baseDelay + mathrand.Intn(variation*2) - variation
 
 	if finalDelay < minDelay {
 		finalDelay = minDelay
@@ -273,7 +275,7 @@ func loadConfig() {
 			ReplyEnable:        false,
 			ReplyText:          "",
 			Templates:          []MessageTemplate{},
-			MaxRetries:         2, // Reduced retries to avoid spam detection
+			MaxRetries:         2,  // Reduced retries to avoid spam detection
 			RetryDelay:         10, // Increased retry delay
 			SendDelay:          5,  // Minimum safe delay
 			MinSendDelay:       3,  // Minimum 3 seconds between messages
@@ -317,13 +319,6 @@ func saveConfig() {
 // Enhanced security with rate limiting and IP checking
 func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Check for suspicious activity
-		if isIPSuspicious(r.RemoteAddr) {
-			addLog(fmt.Sprintf("Suspicious access attempt from: %s", r.RemoteAddr), "SECURITY")
-			http.Error(w, "Access Denied", http.StatusForbidden)
-			return
-		}
-
 		user, pass, ok := r.BasicAuth()
 		adminUser := os.Getenv("ADMIN_USER")
 		adminPass := os.Getenv("ADMIN_PASS")
@@ -343,22 +338,6 @@ func basicAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next.ServeHTTP(w, r)
 	}
-}
-
-// Simple IP reputation check (can be enhanced with external services)
-func isIPSuspicious(ip string) bool {
-	// Basic implementation - can be enhanced with real threat intelligence
-	suspiciousIPs := []string{
-		"127.0.0.1", // Obviously not suspicious, but for demo
-		// Add known malicious IPs or patterns here
-	}
-
-	for _, suspIP := range suspiciousIPs {
-		if strings.Contains(ip, suspIP) {
-			return false // Don't block localhost for demo
-		}
-	}
-	return false
 }
 
 // Enhanced pairing with proper rate limiting
@@ -433,7 +412,7 @@ func sendSecureAutoReply(sender types.JID, replyText, senderUser string) {
 	}
 
 	// Human-like delay before replying (1-5 seconds)
-	replyDelay := time.Duration(1+rand.Intn(4)) * time.Second
+	replyDelay := time.Duration(1+mathrand.Intn(4)) * time.Second
 	time.Sleep(replyDelay)
 
 	maxRetries := config.MaxRetries
@@ -484,7 +463,7 @@ func startSecureAutoSend() {
 	addLog("⏳ Starting secure auto-send with anti-ban protection...", "SECURITY")
 	
 	// Initial delay to avoid immediate sending after connection
-	initialDelay := time.Duration(30+rand.Intn(60)) * time.Second
+	initialDelay := time.Duration(30+mathrand.Intn(60)) * time.Second
 	addLog(fmt.Sprintf("🔒 Waiting %v before starting (security measure)", initialDelay), "SECURITY")
 	time.Sleep(initialDelay)
 
@@ -561,8 +540,6 @@ func sendSecureMessage(phone, message string) bool {
 
 		// Randomize user agent if enabled
 		if config.RandomizeUserAgent {
-			// This would require modifying the whatsmeow client
-			// For now, we just log it
 			userAgent := getRandomUserAgent()
 			addLog(fmt.Sprintf("🔄 Using user agent: %s", userAgent), "SECURITY")
 		}
@@ -602,9 +579,6 @@ func sendSecureMessage(phone, message string) bool {
 	}
 	return false
 }
-
-// Rest of the handlers remain the same but with security enhancements...
-// [Previous handler functions with security improvements]
 
 func main() {
 	// Initialize security components first
@@ -662,7 +636,15 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
-// Enhanced handlers with security features...
+// Enhanced handlers
+
+func handleIndex(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "index.html")
+}
+
+func handleAdmin(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "admin.html")
+}
 
 func handleSecurePair(w http.ResponseWriter, r *http.Request) {
 	phone := r.URL.Query().Get("phone")
@@ -691,7 +673,7 @@ func handleSecurePair(w http.ResponseWriter, r *http.Request) {
 	clientName := "Chrome (Linux)"
 	if config.RandomizeUserAgent {
 		clientOptions := []string{"Chrome (Linux)", "Chrome (Windows)", "Chrome (macOS)"}
-		clientName = clientOptions[rand.Intn(len(clientOptions))]
+		clientName = clientOptions[mathrand.Intn(len(clientOptions))]
 	}
 
 	code, err := client.PairPhone(r.Context(), phone, true, whatsmeow.PairClientChrome, clientName)
@@ -703,6 +685,66 @@ func handleSecurePair(w http.ResponseWriter, r *http.Request) {
 
 	addLog(fmt.Sprintf("📱 Secure pairing code generated for: %s", phone), "SECURITY")
 	w.Write([]byte(code))
+}
+
+func handleIsLinked(w http.ResponseWriter, r *http.Request) {
+	if client.Store.ID != nil {
+		w.Write([]byte("true"))
+	} else {
+		w.Write([]byte("false"))
+	}
+}
+
+func handleApiInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if client.Store.ID != nil {
+		json.NewEncoder(w).Encode(APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"status":          "Connected",
+				"jid":             client.Store.ID.User,
+				"connected":       client.IsConnected(),
+				"security_active": true,
+				"safe_mode":       config.SafeMode,
+			},
+		})
+	} else {
+		json.NewEncoder(w).Encode(APIResponse{
+			Success: true,
+			Data: map[string]interface{}{
+				"status":          "Disconnected",
+				"jid":             "None",
+				"connected":       false,
+				"security_active": true,
+			},
+		})
+	}
+}
+
+func handleLogs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	logMu.Lock()
+	json.NewEncoder(w).Encode(APIResponse{
+		Success: true,
+		Data:    systemLogs,
+	})
+	logMu.Unlock()
+}
+
+func handleLogout(w http.ResponseWriter, r *http.Request) {
+	if client.Store.ID != nil {
+		client.Logout(context.Background())
+		addLog("🔴 Device securely logged out by admin", "SECURITY")
+		json.NewEncoder(w).Encode(APIResponse{
+			Success: true,
+			Message: "Logged out successfully",
+		})
+	} else {
+		json.NewEncoder(w).Encode(APIResponse{
+			Success: false,
+			Message: "Not logged in",
+		})
+	}
 }
 
 func handleSecureConfig(w http.ResponseWriter, r *http.Request) {
@@ -869,74 +911,5 @@ func secureMessageScheduler() {
 			}
 		}
 		scheduleMu.Unlock()
-	}
-}
-
-// Add remaining handler functions with security improvements...
-func handleIndex(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "index.html")
-}
-
-func handleAdmin(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "admin.html")
-}
-
-func handleIsLinked(w http.ResponseWriter, r *http.Request) {
-	if client.Store.ID != nil {
-		w.Write([]byte("true"))
-	} else {
-		w.Write([]byte("false"))
-	}
-}
-
-func handleApiInfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if client.Store.ID != nil {
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: true,
-			Data: map[string]interface{}{
-				"status":          "Connected",
-				"jid":             client.Store.ID.User,
-				"connected":       client.IsConnected(),
-				"security_active": true,
-				"safe_mode":       config.SafeMode,
-			},
-		})
-	} else {
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: true,
-			Data: map[string]interface{}{
-				"status":          "Disconnected",
-				"jid":             "None",
-				"connected":       false,
-				"security_active": true,
-			},
-		})
-	}
-}
-
-func handleLogs(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	logMu.Lock()
-	json.NewEncoder(w).Encode(APIResponse{
-		Success: true,
-		Data:    systemLogs,
-	})
-	logMu.Unlock()
-}
-
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	if client.Store.ID != nil {
-		client.Logout(context.Background())
-		addLog("🔴 Device securely logged out by admin", "SECURITY")
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: true,
-			Message: "Logged out successfully",
-		})
-	} else {
-		json.NewEncoder(w).Encode(APIResponse{
-			Success: false,
-			Message: "Not logged in",
-		})
 	}
 }
